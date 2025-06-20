@@ -1,0 +1,34 @@
+{
+  "action": "opened",
+  "number": 1,
+  "issue": {
+    "id": 3161837599,
+    "number": 1,
+    "title": "Test issue for Clide webhook analysis",
+    "body": "Hi Clide! 👋\n\nThis is a test issue to demonstrate your webhook analysis capabilities.\n\n## Problem\nI want to test how you analyze GitHub issues and provide recommendations.\n\n## Expected Behavior\nClide should analyze this issue and provide:\n- Priority assessment\n- Category classification\n- Suggested labels\n- Recommended actions\n\n## Additional Context\nThis is part of testing the HLS webhook handler with real GitHub integration.\n\nPlease analyze this issue! 🤖",
+    "state": "open",
+    "user": {
+      "login": "clidecoder",
+      "id": 216598658
+    },
+    "labels": [
+      {"name": "test"},
+      {"name": "webhook"}
+    ],
+    "created_at": "2025-06-20T03:51:29Z",
+    "updated_at": "2025-06-20T03:51:29Z"
+  },
+  "repository": {
+    "id": 1005322646,
+    "name": "hls",
+    "full_name": "clidecoder/hls",
+    "owner": {
+      "login": "clidecoder",
+      "id": 216598658
+    }
+  },
+  "sender": {
+    "login": "clidecoder",
+    "id": 216598658
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "title": "Real webhook test - Clide should analyze this!",
+  "body": "🎯 **Real Webhook Test**\n\nThis issue is being created to test the complete end-to-end webhook flow:\n\n## What Should Happen\n1. GitHub sends webhook to `https://clidecoder.com/webhook`\n2. Nginx routes to our HLS service on port 8000\n3. Clide analyzes this issue and provides recommendations\n4. Response should include Clide's friendly analysis\n\n## Issue Details\n- **Type**: Bug report\n- **Priority**: High\n- **Component**: Webhook processing\n\n## Expected Clide Analysis\nClide should identify this as a test issue and provide appropriate categorization.\n\n---\n*This is the REAL test of our webhook integration! 🚀*",
+  "labels": ["bug", "high-priority", "webhook-test"]
+}
