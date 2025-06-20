@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+PyYAML
+structlog
+requests
+anthropic
+PyGithub
+jinja2
