@@ -4,51 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a GitHub webhook handler service built with FastAPI that integrates with Claude AI to process GitHub events (issues, pull requests, etc.). The service is designed to receive webhooks from GitHub, validate them, and use Claude to generate intelligent responses.
+This is a GitHub webhook handler service built with FastAPI that integrates with Claude AI to process GitHub events (issues, pull requests, reviews, etc.). The service receives webhooks from GitHub, validates them, and uses Claude to generate intelligent responses.
 
 ## Architecture
 
-The codebase follows a modular architecture with these key components:
+The codebase uses a webhook service intermediary architecture:
 
-- **main.py**: FastAPI application entry point that handles webhook validation and routing
-- **webhook_processor.py**: Core processing logic that coordinates between handlers, clients, and prompts
+```
+GitHub → nginx → webhook service → Python dispatch → Handler → Claude AI → GitHub API
+              (port 9000)        (webhook_dispatch.py)    ↓
+                   ↓                        ↓         Prompt Loader
+              Validation              Request Routing
+```
 
-### Complete Module Structure
+**Flow Components:**
+- **nginx**: Routes `/hooks` to webhook service on port 9000
+- **webhook service**: adnanh/webhook handles signature validation and dispatch
+- **webhook_dispatch.py**: Python script that processes webhooks using existing modules
+- **FastAPI service**: Optional - can run on port 8000 for direct API access
 
-The codebase now includes all necessary modules:
+### Key Modules
 
-- **config.py**: Settings management with YAML configuration loading (Settings, ServerConfig, GitHubConfig, etc.)
-- **clients.py**: ClaudeClient and GitHubClient implementations for API interactions  
-- **handlers.py**: Event-specific handlers (IssueHandler, PullRequestHandler, ReviewHandler, WorkflowHandler)
-- **prompts.py**: PromptLoader class for template management
-- **logging_config.py**: Structured logging setup with RequestIDProcessor
+- **main.py**: FastAPI application entry point with webhook routing and validation
+- **webhook_processor.py**: Core orchestration that coordinates handlers, clients, and prompts
+- **handlers.py**: Event-specific handlers using Abstract Base Class pattern (IssueHandler, PullRequestHandler, etc.)
+- **clients.py**: API clients for Claude (using subprocess) and GitHub (using PyGithub)
+- **config.py**: Pydantic models for settings management with YAML configuration loading
+- **prompts.py**: Jinja2 template loader for dynamic prompt generation
+- **logging_config.py**: Structured logging with request correlation IDs
 
 ## Development Commands
 
-Install dependencies:
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-To run the service:
-```bash
-# The application expects to be run as a module
+# Install webhook service (adnanh/webhook)
+# Download from: https://github.com/adnanh/webhook/releases
+# Or: go install github.com/adnanh/webhook@latest
+
+# Run webhook service (production)
+webhook -hooks hooks.json -port 9000 -verbose
+
+# Test webhook dispatch script directly
+echo '{"repository":{"full_name":"test/repo"}}' | GITHUB_EVENT=issues GITHUB_DELIVERY=123 ./webhook_dispatch.py
+
+# Optional: Run FastAPI service for direct access
 python -m hls.src.hls_handler.main
+# Or: uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
 
-# Or with uvicorn directly (as shown in main.py)
-uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
+# Test Claude response parsing
+python test_clide_response.py
 ```
 
 ## Configuration
 
-The service expects:
-- A `config/settings.yaml` file containing:
-  - Server configuration (host, port, webhook_path)
-  - GitHub configuration (webhook_secret, API credentials)
-  - Claude configuration (API key)
-  - Repository-specific configurations
-  - Feature flags (signature_validation, async_processing)
-  - Logging configuration
+The service uses layered configuration:
+
+1. **Environment Variables** (.env file):
+   - `GITHUB_TOKEN`: Personal access token for GitHub API
+   - `GITHUB_WEBHOOK_SECRET`: Secret for webhook signature validation
+   - `ANTHROPIC_API_KEY`: API key for Claude (defaults to "claude-code" for CLI)
+
+2. **YAML Configuration** (config/settings.yaml):
+   - Server settings (host, port, webhook_path)
+   - Repository-specific configurations and feature flags
+   - Prompt template mappings per event type
 
 ## API Endpoints
 
@@ -56,24 +77,35 @@ The service expects:
 - `POST {webhook_path}`: GitHub webhook receiver (path from settings.yaml)
 - `GET /stats`: Processing statistics endpoint
 
-## Webhook Processing Flow
+## Event Processing Flow
 
-1. Webhook received at configured path
-2. Signature validation (if enabled)
-3. Repository and event type filtering
-4. Asynchronous or synchronous processing based on configuration
-5. Event-specific handler invoked
-6. Claude AI generates response
-7. GitHub API updates (labels, comments)
+1. **nginx** receives webhook at `/hooks` and forwards to webhook service (port 9000)
+2. **webhook service** validates request against `hooks.json` trigger rules
+3. **webhook service** executes `webhook_dispatch.py` with GitHub headers and JSON payload
+4. **webhook_dispatch.py** performs signature validation (if enabled)
+5. Repository and event type filtering
+6. Handler selection and processing using existing modules
+7. Claude AI analysis using Jinja2 templates from `prompts/` directory  
+8. GitHub API actions (labels, comments) based on Claude's response
+9. JSON response returned to webhook service, which responds to GitHub
 
-## Additional Resources
+## Testing
 
-- **prompts/**: Template directory containing Jinja2 templates for different event types (issues, pull_requests, reviews, workflows, releases)
-- **requirements.txt**: All Python dependencies needed to run the application
+When adding new features:
+- Test webhook signatures with the provided `test_webhook_signature.py` script
+- Verify Claude response parsing with `test_clide_response.py`
+- Check handler logic by sending test payloads to the webhook endpoint
 
-## Next Steps
+## Important Patterns
 
-To complete the setup:
-1. Create the `config/settings.yaml` file with appropriate configuration
-2. Set environment variables for API keys (GitHub token, Anthropic API key)
-3. Add tests for the webhook processing logic
+- **Abstract Base Classes**: All handlers inherit from `BaseHandler` in handlers.py
+- **Webhook Service Integration**: Use `hooks.json` to configure webhook service routing
+- **Direct Module Usage**: `webhook_dispatch.py` uses existing modules without FastAPI overhead
+- **Structured Logging**: All logs include request_id for correlation
+- **Template Customization**: Repository-specific prompts override defaults in settings.yaml
+
+## Configuration Files
+
+- **hooks.json**: Webhook service configuration with trigger rules and dispatch settings
+- **nginx_update.conf**: nginx configuration showing `/hooks` routing to port 9000
+- **webhook_dispatch.py**: Python script executed by webhook service for processing

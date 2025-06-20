@@ -1,0 +1,5 @@
+{
+  "title": "Add webhook monitoring dashboard",
+  "body": "## Feature Request\n\nWe should add a monitoring dashboard to track webhook processing statistics and health.\n\n### Requirements\n- Display webhook processing metrics\n- Show recent webhook deliveries\n- Monitor Clide analysis performance\n- Alert on webhook failures\n\n### Technical Details\n- Could be a simple web interface\n- Should integrate with existing FastAPI app\n- Maybe use charts/graphs for visualization\n\n### Priority\nMedium - Would be helpful for monitoring but not critical\n\n---\n*This issue was created to test Clide's real webhook analysis! 🚀*",
+  "labels": ["enhancement", "monitoring", "dashboard"]
+}

@@ -1,0 +1,6 @@
+{
+  "title": "Add webhook monitoring documentation",
+  "body": "## Summary\n\nAdds initial documentation for webhook monitoring capabilities as requested in issue #2.\n\n## Changes\n- ✅ Added `MONITORING.md` with current monitoring features\n- ✅ Documented planned dashboard enhancements\n- ✅ Listed key metrics being tracked\n\n## Related Issues\nCloses #2\n\n## Test Plan\n- [x] Documentation is clear and comprehensive\n- [x] Covers current monitoring endpoints (`/health`, `/stats`)\n- [x] Outlines future enhancement roadmap\n\n## Review Notes\nThis is foundational documentation that will guide the implementation of the monitoring dashboard.\n\n---\n*This PR was created to test Clide's pull request analysis! 🚀*",
+  "head": "add-webhook-monitoring",
+  "base": "main"
+}
