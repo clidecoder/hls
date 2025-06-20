@@ -1,0 +1,166 @@
+# HLS GitHub Webhook Handler Configuration
+# Copy this file to settings.yaml and customize for your environment
+
+server:
+  host: "${HLS_HOST:-0.0.0.0}"
+  port: ${HLS_PORT:-8000}
+  webhook_path: "${HLS_WEBHOOK_PATH:-/webhook}"
+
+github:
+  # GitHub Personal Access Token with repo permissions
+  token: "${GITHUB_TOKEN}"
+  # Webhook secret configured in GitHub repository settings
+  webhook_secret: "${GITHUB_WEBHOOK_SECRET}"
+  # Optional: GitHub API base URL (for GitHub Enterprise)
+  base_url: "https://api.github.com"
+
+claude:
+  # Anthropic API key from console.anthropic.com
+  api_key: "${ANTHROPIC_API_KEY}"
+  # Claude model to use for analysis
+  model: "claude-3-5-sonnet-20241022"
+  # Maximum tokens in Claude response
+  max_tokens: 4000
+  # Temperature for response randomness (0.0-1.0)
+  temperature: 0.1
+  # Timeout for Claude API requests (seconds)
+  timeout: 60
+
+# Repository-specific configurations
+repositories:
+  # Example repository configuration
+  - name: "your-org/your-repo"
+    enabled: true
+    # Events to process for this repository
+    events:
+      - "issues"
+      - "pull_request"
+      - "pull_request_review"
+      - "workflow_run"
+      - "release"
+    # Auto-labeling configuration
+    labels:
+      auto_apply: true
+      # Standard label categories to apply
+      categories:
+        - "bug"
+        - "enhancement"
+        - "question"
+        - "documentation"
+        - "maintenance"
+        - "priority-high"
+        - "priority-medium"
+        - "priority-low"
+        - "difficulty-easy"
+        - "difficulty-moderate"
+        - "difficulty-complex"
+    # Auto-commenting configuration
+    comments:
+      auto_post: false
+      # Only comment on these event types
+      event_types:
+        - "issues.opened"
+        - "pull_request.opened"
+    # Custom prompt overrides (optional)
+    prompts:
+      issues:
+        analyze: "custom_issue_analysis_prompt.j2"
+      pull_requests:
+        review: "custom_pr_review_prompt.j2"
+
+  # Additional repository example
+  - name: "your-org/another-repo"
+    enabled: true
+    events:
+      - "issues"
+      - "pull_request"
+    labels:
+      auto_apply: false
+    comments:
+      auto_post: true
+      event_types:
+        - "issues.opened"
+
+# Feature flags and toggles
+features:
+  # Validate GitHub webhook signatures (recommended: true)
+  signature_validation: true
+  # Process webhooks asynchronously (recommended: true)
+  async_processing: true
+  # Automatically apply labels based on Claude analysis
+  auto_labeling: true
+  # Automatically post comments based on Claude analysis
+  auto_commenting: false
+  # Save Claude analyses to output files
+  save_analyses: true
+  # Setup repository labels automatically
+  auto_setup_labels: false
+
+# Prompt template configuration
+prompts:
+  # Base directory for prompt templates
+  base_dir: "prompts"
+  # Default prompt files for each event type
+  defaults:
+    issues:
+      analyze: "issues/analyze.j2"
+      comment: "issues/comment.j2"
+    pull_requests:
+      analyze: "pull_requests/analyze.j2"
+      review: "pull_requests/review.j2"
+      comment: "pull_requests/comment.j2"
+    reviews:
+      analyze: "reviews/analyze.j2"
+      respond: "reviews/respond.j2"
+    workflows:
+      analyze: "workflows/analyze.j2"
+      failure_comment: "workflows/failure_comment.j2"
+    releases:
+      analyze: "releases/analyze.j2"
+      announcement: "releases/announcement.j2"
+
+# Output file configuration
+outputs:
+  # Base directory for saving analyses and logs
+  base_dir: "outputs"
+  # Save individual analysis results
+  save_analyses: true
+  # Save processing statistics
+  save_stats: true
+  # Include timestamps in filenames
+  include_timestamps: true
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  # Log format: json, plain
+  format: "json"
+  # Log file path (optional, logs to stdout if not specified)
+  file: "logs/hsl.log"
+  # Enable request ID correlation
+  enable_request_ids: true
+  # Log webhook payloads (may contain sensitive data)
+  log_payloads: false
+
+# Rate limiting and performance
+performance:
+  # Maximum concurrent webhook processing
+  max_concurrent_webhooks: 10
+  # Claude API request timeout (seconds)
+  claude_timeout: 60
+  # GitHub API request timeout (seconds)
+  github_timeout: 30
+  # Maximum webhook payload size (bytes)
+  max_payload_size: 10485760  # 10MB
+
+# Development and debugging options
+development:
+  # Enable debug mode (more verbose logging)
+  debug: false
+  # Skip signature validation (development only)
+  skip_signature_validation: false
+  # Mock Claude API responses (for testing)
+  mock_claude: false
+  # Mock GitHub API responses (for testing)
+  mock_github: false
