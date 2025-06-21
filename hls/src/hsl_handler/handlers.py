@@ -501,3 +501,11 @@ HANDLERS = {
     "pull_request_review": ReviewHandler,
     "workflow_run": WorkflowHandler,
 }
+
+# Optional: Import chained handlers if you want to use them
+try:
+    from .chained_issue_handler import ChainedIssueHandler
+    # To use chained handlers, update the HANDLERS dict:
+    HANDLERS["issues"] = ChainedIssueHandler
+except ImportError:
+    pass

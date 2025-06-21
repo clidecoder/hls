@@ -1,25 +1,39 @@
-# HLS - GitHub Webhook Handler with Claude Integration
+# HLS GitHub Webhook Handler
 
-HLS (GitHub Event Handler with Claude Integration) is a production-ready webhook processing system that uses nginx for SSL termination, adnanh/webhook for secure webhook handling, and Python/FastAPI for GitHub event processing with Claude AI integration.
+> 🤖 AI-powered GitHub webhook handler with Claude Code integration for intelligent issue and PR analysis
+
+## Overview
+
+The HLS (Heuristic Learning System) webhook handler is a production-ready GitHub webhook service that uses Claude AI to automatically analyze issues, pull requests, and other GitHub events. It features advanced chained prompts for multi-step analysis and automatic backup processing via cron jobs.
 
 ## Architecture Overview
 
 ```
-GitHub → nginx (SSL) → webhook service → Python dispatcher → Event handlers → Claude AI
-         :443/hooks     :9000             webhook_dispatch.py   FastAPI        API calls
+GitHub → nginx → webhook service → Python dispatch → Handler → Claude AI → GitHub API
+              (port 9000)        (webhook_dispatch.py)    ↓
+                   ↓                        ↓         Prompt Loader
+              Validation              Request Routing
 ```
 
-## Features
+## ✨ Key Features
 
-- 🔒 **Production-grade security** with nginx SSL termination and webhook signatures
-- 🚀 **Fast webhook processing** with adnanh/webhook and Python async
-- 🤖 **Claude AI integration** for intelligent analysis and responses
-- 🏷️ **Automatic labeling** based on AI analysis
-- 💬 **Smart commenting** on issues and pull requests
-- 📊 **Built-in statistics** and monitoring
-- 🎯 **Event filtering** by repository and event type
-- 📝 **Customizable prompts** with Jinja2 templates
-- ⚙️ **Flexible configuration** with YAML and environment variables
+### 🧠 **AI-Powered Analysis**
+- **Chained Prompts** - Multi-step analysis for better AI reasoning and context preservation
+- **Smart Labeling** - Automatically applies relevant labels based on content analysis  
+- **Priority Assessment** - Determines issue priority and complexity
+- **Intelligent Comments** - Generates contextual responses and feedback
+
+### 🛡️ **Production Ready**
+- **nginx Integration** - SSL termination and load balancing
+- **Backup Processing** - Cron jobs catch missed webhooks automatically
+- **Error Recovery** - Comprehensive error handling and retry logic
+- **Monitoring** - Structured logging, health checks, and performance metrics
+
+### ⚙️ **Advanced Features**
+- **Context Awareness** - Maintains conversation history between prompt steps
+- **Repository Filtering** - Per-repository configuration and event filtering
+- **Rate Limiting** - Respects GitHub and Claude API limits
+- **Webhook Validation** - Secure signature verification
 
 ## Quick Start
 
@@ -170,9 +184,106 @@ tail -f webhook.log
 tail -f logs/webhook.log
 ```
 
+## 🔗 Chained Prompts
+
+### What are Chained Prompts?
+
+Chained prompts break complex AI analysis into multiple focused steps, maintaining context between each step for better reasoning and more accurate results.
+
+### Example: Issue Analysis Chain
+
+1. **Step 1 - Analysis**: Understand the issue and extract structured data
+   - Categorize as bug/feature/question
+   - Assess priority and complexity
+   - Extract technical areas and requirements
+
+2. **Step 2 - Response**: Generate appropriate response using analysis data
+   - Welcome the contributor
+   - Provide specific guidance based on issue type
+   - Suggest next steps and timeline
+
+### Benefits
+
+- **Better Accuracy** - Each step focuses on a specific task
+- **Context Preservation** - Conversation history maintained between steps
+- **Structured Data** - Extract and use metadata between steps
+- **Flexible Workflows** - Easy to add/modify steps
+
+### Configuration
+
+```yaml
+prompts:
+  templates:
+    issues:
+      analyze: "issues/analyze.md"    # Step 1: Analysis
+      respond: "issues/respond.md"    # Step 2: Response
+```
+
+See [Chained Prompts Guide](docs/CHAINED_PROMPTS.md) for implementation details.
+
+## ⏰ Backup Processing (Cron Jobs)
+
+### Automatic Issue Detection
+
+A cron job runs every hour to find and process issues that may have been missed by webhooks:
+
+- **Smart Detection** - Finds issues older than 30 minutes without `clide-analyzed` label
+- **Same Quality** - Uses identical chained prompt analysis as webhooks  
+- **Safety Mechanisms** - Rate limiting and concurrent execution prevention
+- **Comprehensive Logging** - Detailed logs for monitoring and debugging
+
+### Manual Processing
+
+```bash
+# Test mode (find issues without processing)
+python3 scripts/analyze_missed_issues.py --dry-run
+
+# Process issues older than 1 hour
+python3 scripts/analyze_missed_issues.py --min-age 60
+
+# Check what would be processed
+python3 scripts/analyze_missed_issues.py --dry-run --min-age 30
+```
+
+### Configuration
+
+```yaml
+cron_analysis:
+  enabled: true
+  min_age_minutes: 30        # Only process issues older than 30 minutes
+  max_issues_per_repo: 10    # Safety limit per repository  
+  delay_between_issues: 2    # Seconds between processing
+```
+
+See [Cron Jobs Documentation](docs/CRON_JOBS.md) for complete setup guide.
+
+## 📊 Monitoring & Analytics
+
+### Real-Time Monitoring
+
+```bash
+# Check processing status
+curl http://localhost:8000/stats
+
+# Monitor webhook logs
+tail -f logs/webhook.log
+
+# Monitor cron job logs
+tail -f logs/cron-analyze.log
+```
+
+### Key Metrics
+
+- **Processing Success Rate** - Percentage of successful webhook processing
+- **Average Response Time** - Time from webhook to completed analysis
+- **Issues Processed** - Total issues analyzed (webhooks + cron)
+- **API Rate Limits** - GitHub and Claude API usage tracking
+
 ## Documentation
 
 ### Core Documentation
+- **[Chained Prompts Guide](docs/CHAINED_PROMPTS.md)** - Multi-step prompt implementation
+- **[Cron Jobs Documentation](docs/CRON_JOBS.md)** - Backup processing system
 - **[Architecture Guide](ARCHITECTURE.md)** - Detailed system architecture and components
 - **[Deployment Guide](DEPLOYMENT.md)** - Complete deployment instructions and options
 - **[Limitations & Improvements](LIMITATIONS.md)** - Known issues and enhancement recommendations

@@ -25,8 +25,14 @@ class ClaudeClient:
         self._request_count = 0
         self._last_request_time = 0.0
     
-    async def analyze(self, prompt: str, context: str) -> str:
-        """Analyze content using Claude via Claude Code."""
+    async def analyze(self, prompt: str, context: str, conversation_history: Optional[str] = None) -> str:
+        """Analyze content using Claude via Claude Code.
+        
+        Args:
+            prompt: The prompt to send to Claude
+            context: The immediate context for this request
+            conversation_history: Optional previous conversation for chained prompts
+        """
         
         # Simple rate limiting
         current_time = time.time()
@@ -37,10 +43,22 @@ class ClaudeClient:
         self._request_count += 1
         
         try:
-            # Combine prompt and context
-            full_prompt = f"{context}\n\n{prompt}"
+            # Build full prompt with conversation history if provided
+            full_prompt_parts = []
             
-            logger.info("Sending request to Claude Code", request_count=self._request_count)
+            if conversation_history:
+                full_prompt_parts.append(conversation_history)
+                full_prompt_parts.append("\n# Current Request\n")
+            
+            full_prompt_parts.append(context)
+            full_prompt_parts.append("\n\n")
+            full_prompt_parts.append(prompt)
+            
+            full_prompt = "".join(full_prompt_parts)
+            
+            logger.info("Sending request to Claude Code", 
+                       request_count=self._request_count,
+                       has_conversation_history=bool(conversation_history))
             
             # Make call in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
