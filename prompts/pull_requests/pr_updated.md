@@ -1,40 +1,29 @@
-The Pull Request has been updated. Please review the new changes:
+You are analyzing an updated GitHub pull request for the {{ repository_name }} repository.
 
-## STEP 1: Change Summary
-First, understand what changed in this update:
-- What commits were added?
-- Were previous review comments addressed?
-- Are there any new files or significant changes?
+## Pull Request Details
+- **Title**: {{ pr_title }}
+- **Author**: {{ pr_user }}
+- **Repository**: {{ repository_name }}
+- **Number**: #{{ pr_number }}
+- **Files Changed**: {{ changed_files }}
+- **Additions**: +{{ additions }}
+- **Deletions**: -{{ deletions }}
 
-## STEP 2: Review Comment Resolution
-Check how previous feedback was addressed:
-- Which requested changes were implemented?
-- Which suggestions were incorporated?
-- Are there any unresolved comments?
-- Were the fixes implemented correctly?
+## Pull Request Description
+{{ pr_body }}
 
-## STEP 3: New Code Review
-Review any new code added in this update:
-- Does the new code maintain quality standards?
-- Are there any new issues introduced?
-- Do the changes align with the requested modifications?
+## Updated Code Changes
+{{ diff[:3000] }}
 
-## STEP 4: Regression Check
-Verify nothing was broken:
-- Do previous features still work?
-- Were any good changes accidentally reverted?
-- Are all tests still passing?
+## Analysis Instructions
 
-## STEP 5: Updated Recommendation
-Based on the changes:
-- Have all critical issues been resolved?
-- Is the PR now ready for merge?
-- Are there any remaining concerns?
+This pull request has been updated. Provide a focused review on the recent changes:
 
-## STEP 6: Follow-up Actions
-Specify any remaining actions:
-1. **Still Required**: Changes that still need to be made
-2. **New Issues**: Any problems introduced in the update
-3. **Final Steps**: Any final touches needed
+1. **Change Assessment**: Evaluate what has been modified since the last update
+2. **Code Quality**: Review new changes for best practices and potential issues
+3. **Impact Analysis**: Assess how the updates affect the overall PR
+4. **Status Update**: Determine if the PR is closer to being ready for merge
 
-Provide a clear status update and recommendation for the PR.
+Keep your response technical and focused. Do not use emojis in your response. Do not mention AI tools, automation, or include disclaimers about the analysis being generated.
+
+Format your response as a clear, professional code review comment focusing on the updates.
