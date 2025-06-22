@@ -250,19 +250,7 @@ class PullRequestHandler(BaseHandler):
             # Post analysis comment
             repo_config = self.settings.get_repository_config(repo_name)
             if repo_config and repo_config.settings.get("post_analysis_comments", True):
-                comment = f"""## 🔍 Automated PR Review
-
-Hi! I've automatically reviewed this pull request using Claude Code. Here's my assessment:
-
----
-
-{analysis}
-
----
-
-*This review was generated automatically by the PromptForge webhook system. The suggestions above are AI-generated and should be reviewed by a human maintainer.*
-
-*PR analyzed at: {context.get('timestamp', 'unknown')}*"""
+                comment = analysis
                 
                 await self.github_client.post_pr_comment(repo_name, pr_number, comment)
             
