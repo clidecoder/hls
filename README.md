@@ -8,11 +8,147 @@ The HLS (Heuristic Learning System) webhook handler is a production-ready GitHub
 
 ## Architecture Overview
 
+### Web Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant GH as GitHub
+    participant CF as Cloudflare
+    participant NG as nginx<br/>(Let's Encrypt SSL)
+    participant WH as adnanh/webhook<br/>(:9000)
+    participant PY as webhook_dispatch.py
+    participant HLS as HLS Python<br/>(FastAPI)
+    participant AI as Claude AI
+    participant API as GitHub API
+
+    Note over GH: Issue/PR created
+    GH->>CF: POST https://clidecoder.com/hooks/github-webhook
+    CF->>NG: Forward HTTPS request
+    Note over NG: SSL termination<br/>Let's Encrypt cert
+    NG->>WH: Proxy to localhost:9000
+    Note over WH: Validate webhook rules<br/>Check signature
+    WH->>PY: Execute script with payload
+    Note over PY: Load settings.yaml<br/>Validate signature
+    PY->>HLS: Import and call modules
+    HLS->>AI: Analyze with prompts
+    AI-->>HLS: Return analysis
+    HLS->>API: Apply labels/comments
+    API-->>GH: Update issue/PR
+    HLS-->>PY: Return result
+    PY-->>WH: Exit with status
+    WH-->>NG: 200 OK response
+    NG-->>CF: Return response
+    CF-->>GH: Webhook delivered
 ```
-GitHub → nginx → webhook service → Python dispatch → Handler → Claude AI → GitHub API
-              (port 9000)        (webhook_dispatch.py)    ↓
-                   ↓                        ↓         Prompt Loader
-              Validation              Request Routing
+
+### Component Configuration
+
+#### 1. **nginx Configuration** (`/etc/nginx/sites-available/clidecoder.com`)
+```nginx
+server {
+    server_name clidecoder.com;
+    
+    # Webhook endpoint - proxy to adnanh/webhook service
+    location /hooks {
+        proxy_pass http://localhost:9000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Preserve GitHub webhook headers
+        proxy_set_header X-GitHub-Event $http_x_github_event;
+        proxy_set_header X-GitHub-Delivery $http_x_github_delivery;
+        proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
+        
+        # Timeouts for webhook processing
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 300s;  # 5 minutes for Claude processing
+        
+        # Body size for large PR payloads
+        client_max_body_size 10M;
+        client_body_buffer_size 128k;
+    }
+    
+    # Let's Encrypt SSL configuration
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/clidecoder.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/clidecoder.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name clidecoder.com;
+    return 301 https://$server_name$request_uri;
+}
+```
+
+#### 2. **adnanh/webhook Configuration** (`hooks.json`)
+```json
+[
+  {
+    "id": "github-webhook",
+    "execute-command": "/home/clide/hls/webhook_dispatch.py",
+    "command-working-directory": "/home/clide/hls",
+    "response-message": "Webhook received",
+    "pass-arguments-to-command": [
+      {
+        "source": "entire-payload"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "source": "header",
+        "name": "X-GitHub-Event",
+        "envname": "GITHUB_EVENT"
+      },
+      {
+        "source": "header",
+        "name": "X-GitHub-Delivery",
+        "envname": "GITHUB_DELIVERY"
+      },
+      {
+        "source": "header",
+        "name": "X-Hub-Signature-256",
+        "envname": "GITHUB_SIGNATURE"
+      }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "value",
+        "value": "application/json",
+        "parameter": {
+          "source": "header",
+          "name": "Content-Type"
+        }
+      }
+    }
+  }
+]
+```
+
+#### 3. **HLS Configuration** (`config/settings.yaml`)
+```yaml
+github:
+  webhook_secret: "your-secret-here"  # Same as GitHub webhook config
+  token: "ghp_..."                    # GitHub PAT for API calls
+
+repositories:
+  - name: "clidecoder/hls"
+    events: ["issues", "pull_request"]
+    settings:
+      apply_labels: true
+      post_analysis_comments: true
+      auto_close_invalid: false
+
+features:
+  signature_validation: true          # Verify webhook signatures
+  async_processing: false            # Process synchronously
 ```
 
 ## ✨ Key Features
@@ -42,12 +178,25 @@ GitHub → nginx → webhook service → Python dispatch → Handler → Claude 
 - nginx with SSL certificates
 - webhook service (adnanh/webhook)
 - GitHub Personal Access Token
-- Claude Code CLI or Anthropic API Key
+- Claude Code CLI (or Anthropic API Key if not using Max plan)
 - Public domain with SSL (e.g., clidecoder.com)
 
 ### Installation
 
-#### 1. Install webhook service
+#### 1. Set up Let's Encrypt SSL certificate
+```bash
+# Install certbot
+sudo apt update
+sudo apt install certbot python3-certbot-nginx
+
+# Get SSL certificate
+sudo certbot --nginx -d clidecoder.com -d www.clidecoder.com
+
+# Test auto-renewal
+sudo certbot renew --dry-run
+```
+
+#### 2. Install webhook service
 ```bash
 # Install webhook service (adnanh/webhook)
 # Option 1: Download binary from GitHub releases
@@ -58,7 +207,7 @@ tar -xvf webhook-linux-amd64.tar.gz
 go install github.com/adnanh/webhook@latest
 ```
 
-#### 2. Clone and setup HLS
+#### 3. Clone and setup HLS
 ```bash
 # Clone the repository
 git clone https://github.com/clidecoder/hls.git
@@ -75,7 +224,7 @@ pip install -r requirements.txt
 cp config/settings.example.yaml config/settings.yaml
 ```
 
-#### 3. Configure nginx
+#### 4. Configure nginx
 Add to your nginx site configuration:
 ```nginx
 server {
@@ -158,7 +307,22 @@ python setup_github_webhook.py
 
 ### Running
 
-#### 1. Start webhook service:
+#### 1. Start webhook service with pm2:
+```bash
+# Install pm2 globally
+npm install -g pm2
+
+# Start webhook service
+pm2 start ecosystem.config.js
+
+# Save pm2 configuration
+pm2 save
+
+# Set up pm2 to start on boot
+pm2 startup
+```
+
+#### 2. Or start webhook service manually:
 ```bash
 # Run webhook service (port 9000)
 webhook -hooks hooks.json -port 9000 -verbose
@@ -167,7 +331,7 @@ webhook -hooks hooks.json -port 9000 -verbose
 webhook -hooks hooks.json -port 9000 -verbose > webhook.log 2>&1 &
 ```
 
-#### 2. (Optional) Run FastAPI service:
+#### 3. (Optional) Run FastAPI service:
 ```bash
 # Only needed if you want direct API access
 # The webhook service calls webhook_dispatch.py directly
@@ -175,13 +339,45 @@ source venv/bin/activate
 python -m hls.src.hls_handler.main
 ```
 
-#### 3. Monitor logs:
+#### 4. Monitor logs:
 ```bash
 # Webhook service logs
 tail -f webhook.log
 
 # Application logs
 tail -f logs/webhook.log
+
+# pm2 logs
+pm2 logs hls-webhook
+```
+
+### Verify Setup
+
+#### 1. Test webhook endpoint
+```bash
+# Test if webhook service is accessible
+curl -X POST https://clidecoder.com/hooks/github-webhook \
+  -H "Content-Type: application/json" \
+  -d '{"test": "payload"}'
+```
+
+#### 2. Check GitHub webhook delivery
+1. Go to your repository Settings → Webhooks
+2. Click on your webhook
+3. Check "Recent Deliveries" tab
+4. Green checkmark = successful delivery
+5. Click on a delivery to see details
+
+#### 3. Monitor processing
+```bash
+# Watch real-time logs
+pm2 logs hls-webhook --lines 100
+
+# Check webhook statistics
+curl http://localhost:8000/stats
+
+# Check service health
+pm2 status
 ```
 
 ## 🔗 Chained Prompts
