@@ -35,6 +35,10 @@ Based on the analysis, create a response that:
 - Be constructive even if the issue needs work
 - Avoid technical jargon when possible
 - Keep the response concise but helpful
+- Do not use emojis in your response
+- Do not include disclaimers about being AI-generated
+- Do not include timestamps or metadata
+- Get straight to the point without unnecessary preamble
 
 ## Example Structure
 

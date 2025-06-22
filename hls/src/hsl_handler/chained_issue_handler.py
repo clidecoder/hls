@@ -81,6 +81,8 @@ class ChainedIssueHandler(ChainedPromptHandler):
             data["category"] = "feature"
         elif "question" in response_lower:
             data["category"] = "question"
+        elif "documentation" in response_lower:
+            data["category"] = "documentation"
         
         # Check for special conditions
         if re.search(r'need.more.information|need.more.details|unclear', response_lower):
@@ -206,20 +208,7 @@ class ChainedIssueHandler(ChainedPromptHandler):
         
         # Post comment
         if repo_config and repo_config.settings.get("post_analysis_comments", True):
-            from datetime import datetime
-            comment = f"""## 🤖 Automated Issue Analysis
-            
-Hi! I've automatically analyzed this issue using Claude Code with a multi-step analysis process. Here's my assessment:
-
----
-
-{final_response}
-
----
-
-*This analysis was generated automatically by the PromptForge webhook system using chained prompts. The suggestions above are AI-generated and should be reviewed by a human maintainer.*
-
-*Issue analyzed at: {datetime.utcnow().isoformat()}Z*"""
+            comment = final_response
             
             await self.github_client.post_issue_comment(repo_name, issue_number, comment)
         
@@ -228,13 +217,9 @@ Hi! I've automatically analyzed this issue using Claude Code with a multi-step a
             repo_config.settings.get("auto_close_invalid", False) and 
             analysis_data.get("should_close", False)):
             
-            close_comment = """## Issue Closed by Automated Analysis
+            close_comment = """This issue has been automatically closed as it appears to be off-topic or not related to bugs, features, or codebase improvements.
 
-This issue has been automatically closed based on the analysis above.
-
-If you believe this was closed in error, please feel free to provide additional context and request that a maintainer review the decision.
-
-Thank you for your interest in the project!"""
+If you believe this was closed in error, please feel free to provide additional context about how this relates to the project."""
             
             await self.github_client.close_issue(repo_name, issue_number, close_comment)
         

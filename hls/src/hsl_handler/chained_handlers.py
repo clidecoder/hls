@@ -116,10 +116,12 @@ class ChainedPromptHandler(BaseHandler):
             conversation_history = self._build_conversation_context(results) if results else None
             
             # Get the immediate context for this step
-            step_context = accumulated_context.get('issue_context', '') or accumulated_context.get('pr_context', '') or str(accumulated_context)
+            # The prompt has already been rendered with the context variables
+            # We'll pass the rendered prompt as the context, and an empty prompt
+            step_context = prompt  # The rendered prompt contains all the information
             
             # Execute the prompt with conversation history
-            response = await self.claude_client.analyze(prompt, step_context, conversation_history)
+            response = await self.claude_client.analyze("", step_context, conversation_history)
             
             # Extract data if function specified
             extracted_data = None

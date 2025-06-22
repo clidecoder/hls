@@ -30,6 +30,7 @@ Please provide a structured analysis covering these points. If the issue lacks c
 
 ## Special Instructions
 
-- If this appears to be spam, off-topic, or invalid, include "RECOMMENDATION: CLOSE ISSUE" in your response
+- Do not use emojis in your response
+- If this appears to be spam, off-topic, invalid, or not related to bugs, features, or codebase requests, include "RECOMMENDATION: CLOSE ISSUE" in your response
 - Focus on objective analysis rather than providing solutions at this stage
 - Be concise but thorough in your assessment
