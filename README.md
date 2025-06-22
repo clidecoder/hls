@@ -13,7 +13,6 @@ The HLS (Heuristic Learning System) webhook handler is a production-ready GitHub
 ```mermaid
 sequenceDiagram
     participant GH as GitHub
-    participant CF as Cloudflare
     participant NG as nginx<br/>(Let's Encrypt SSL)
     participant WH as adnanh/webhook<br/>(:9000)
     participant PY as webhook_dispatch.py
@@ -22,8 +21,7 @@ sequenceDiagram
     participant API as GitHub API
 
     Note over GH: Issue/PR created
-    GH->>CF: POST https://clidecoder.com/hooks/github-webhook
-    CF->>NG: Forward HTTPS request
+    GH->>NG: POST https://clidecoder.com/hooks/github-webhook
     Note over NG: SSL termination<br/>Let's Encrypt cert
     NG->>WH: Proxy to localhost:9000
     Note over WH: Validate webhook rules<br/>Check signature
@@ -37,8 +35,7 @@ sequenceDiagram
     HLS-->>PY: Return result
     PY-->>WH: Exit with status
     WH-->>NG: 200 OK response
-    NG-->>CF: Return response
-    CF-->>GH: Webhook delivered
+    NG-->>GH: Webhook delivered
 ```
 
 ### Component Configuration
