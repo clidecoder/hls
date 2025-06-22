@@ -1,79 +1,485 @@
-# HLS - GitHub Webhook Handler with Claude Integration
+# HLS GitHub Webhook Handler
 
-HLS (GitHub Event Handler with Claude Integration) is a FastAPI-based service that processes GitHub webhooks and uses Anthropic's Claude AI to analyze and respond to various GitHub events like issues, pull requests, reviews, and workflow runs.
+> 🤖 AI-powered GitHub webhook handler with Claude Code integration for intelligent issue and PR analysis
 
-## Features
+## Overview
 
-- 🚀 **Fast webhook processing** with FastAPI and async/await
-- 🤖 **Claude AI integration** for intelligent analysis and responses
-- 🏷️ **Automatic labeling** based on AI analysis
-- 💬 **Smart commenting** on issues and pull requests
-- 🔒 **Secure webhook validation** with HMAC signatures
-- 📊 **Built-in statistics** and monitoring
-- 🎯 **Event filtering** by repository and event type
-- 📝 **Customizable prompts** with Jinja2 templates
-- ⚙️ **Flexible configuration** with YAML and environment variables
+The HLS (Heuristic Learning System) webhook handler is a production-ready GitHub webhook service that uses Claude AI to automatically analyze issues, pull requests, and other GitHub events. It features advanced chained prompts for multi-step analysis and automatic backup processing via cron jobs.
+
+## Architecture Overview
+
+### Web Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant GH as GitHub
+    participant CF as Cloudflare
+    participant NG as nginx<br/>(Let's Encrypt SSL)
+    participant WH as adnanh/webhook<br/>(:9000)
+    participant PY as webhook_dispatch.py
+    participant HLS as HLS Python<br/>(FastAPI)
+    participant AI as Claude AI
+    participant API as GitHub API
+
+    Note over GH: Issue/PR created
+    GH->>CF: POST https://clidecoder.com/hooks/github-webhook
+    CF->>NG: Forward HTTPS request
+    Note over NG: SSL termination<br/>Let's Encrypt cert
+    NG->>WH: Proxy to localhost:9000
+    Note over WH: Validate webhook rules<br/>Check signature
+    WH->>PY: Execute script with payload
+    Note over PY: Load settings.yaml<br/>Validate signature
+    PY->>HLS: Import and call modules
+    HLS->>AI: Analyze with prompts
+    AI-->>HLS: Return analysis
+    HLS->>API: Apply labels/comments
+    API-->>GH: Update issue/PR
+    HLS-->>PY: Return result
+    PY-->>WH: Exit with status
+    WH-->>NG: 200 OK response
+    NG-->>CF: Return response
+    CF-->>GH: Webhook delivered
+```
+
+### Component Configuration
+
+#### 1. **nginx Configuration** (`/etc/nginx/sites-available/clidecoder.com`)
+```nginx
+server {
+    server_name clidecoder.com;
+    
+    # Webhook endpoint - proxy to adnanh/webhook service
+    location /hooks {
+        proxy_pass http://localhost:9000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Preserve GitHub webhook headers
+        proxy_set_header X-GitHub-Event $http_x_github_event;
+        proxy_set_header X-GitHub-Delivery $http_x_github_delivery;
+        proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
+        
+        # Timeouts for webhook processing
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 300s;  # 5 minutes for Claude processing
+        
+        # Body size for large PR payloads
+        client_max_body_size 10M;
+        client_body_buffer_size 128k;
+    }
+    
+    # Let's Encrypt SSL configuration
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/clidecoder.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/clidecoder.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name clidecoder.com;
+    return 301 https://$server_name$request_uri;
+}
+```
+
+#### 2. **adnanh/webhook Configuration** (`hooks.json`)
+```json
+[
+  {
+    "id": "github-webhook",
+    "execute-command": "/home/clide/hls/webhook_dispatch.py",
+    "command-working-directory": "/home/clide/hls",
+    "response-message": "Webhook received",
+    "pass-arguments-to-command": [
+      {
+        "source": "entire-payload"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "source": "header",
+        "name": "X-GitHub-Event",
+        "envname": "GITHUB_EVENT"
+      },
+      {
+        "source": "header",
+        "name": "X-GitHub-Delivery",
+        "envname": "GITHUB_DELIVERY"
+      },
+      {
+        "source": "header",
+        "name": "X-Hub-Signature-256",
+        "envname": "GITHUB_SIGNATURE"
+      }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "value",
+        "value": "application/json",
+        "parameter": {
+          "source": "header",
+          "name": "Content-Type"
+        }
+      }
+    }
+  }
+]
+```
+
+#### 3. **HLS Configuration** (`config/settings.yaml`)
+```yaml
+github:
+  webhook_secret: "your-secret-here"  # Same as GitHub webhook config
+  token: "ghp_..."                    # GitHub PAT for API calls
+
+repositories:
+  - name: "clidecoder/hls"
+    events: ["issues", "pull_request"]
+    settings:
+      apply_labels: true
+      post_analysis_comments: true
+      auto_close_invalid: false
+
+features:
+  signature_validation: true          # Verify webhook signatures
+  async_processing: false            # Process synchronously
+```
+
+## ✨ Key Features
+
+### 🧠 **AI-Powered Analysis**
+- **Chained Prompts** - Multi-step analysis for better AI reasoning and context preservation
+- **Smart Labeling** - Automatically applies relevant labels based on content analysis  
+- **Priority Assessment** - Determines issue priority and complexity
+- **Intelligent Comments** - Generates contextual responses and feedback
+
+### 🛡️ **Production Ready**
+- **nginx Integration** - SSL termination and load balancing
+- **Backup Processing** - Cron jobs catch missed webhooks automatically
+- **Error Recovery** - Comprehensive error handling and retry logic
+- **Monitoring** - Structured logging, health checks, and performance metrics
+
+### ⚙️ **Advanced Features**
+- **Context Awareness** - Maintains conversation history between prompt steps
+- **Repository Filtering** - Per-repository configuration and event filtering
+- **Rate Limiting** - Respects GitHub and Claude API limits
+- **Webhook Validation** - Secure signature verification
 
 ## Quick Start
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.8+ with virtual environment
+- nginx with SSL certificates
+- webhook service (adnanh/webhook)
 - GitHub Personal Access Token
-- Anthropic API Key
-- Public-facing server for webhooks
+- Claude Code CLI (or Anthropic API Key if not using Max plan)
+- Public domain with SSL (e.g., clidecoder.com)
 
 ### Installation
+
+#### 1. Set up Let's Encrypt SSL certificate
+```bash
+# Install certbot
+sudo apt update
+sudo apt install certbot python3-certbot-nginx
+
+# Get SSL certificate
+sudo certbot --nginx -d clidecoder.com -d www.clidecoder.com
+
+# Test auto-renewal
+sudo certbot renew --dry-run
+```
+
+#### 2. Install webhook service
+```bash
+# Install webhook service (adnanh/webhook)
+# Option 1: Download binary from GitHub releases
+wget https://github.com/adnanh/webhook/releases/download/2.8.0/webhook-linux-amd64.tar.gz
+tar -xvf webhook-linux-amd64.tar.gz
+
+# Option 2: Install with go
+go install github.com/adnanh/webhook@latest
+```
+
+#### 3. Clone and setup HLS
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd hsl
+git clone https://github.com/clidecoder/hls.git
+cd hls
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy configuration files
-cp .env.example .env
+# Copy configuration
 cp config/settings.example.yaml config/settings.yaml
+```
 
-# Edit configuration files with your tokens and settings
-nano .env
-nano config/settings.yaml
+#### 4. Configure nginx
+Add to your nginx site configuration:
+```nginx
+server {
+    server_name your-domain.com;
+    
+    # Webhook endpoint for GitHub
+    location /hooks {
+        proxy_pass http://localhost:9000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Preserve GitHub webhook headers
+        proxy_set_header X-GitHub-Event $http_x_github_event;
+        proxy_set_header X-GitHub-Delivery $http_x_github_delivery;
+        proxy_set_header X-Hub-Signature-256 $http_x_hub_signature_256;
+        
+        # Increase timeout for Claude processing
+        proxy_read_timeout 300s;
+        client_max_body_size 10M;
+    }
+    
+    listen 443 ssl;
+    # SSL certificates configured by certbot or manually
+}
 ```
 
 ### Configuration
-1. **Set environment variables** in `.env`:
-   ```bash
-   GITHUB_TOKEN=your_github_token
-   GITHUB_WEBHOOK_SECRET=your_webhook_secret
-   ANTHROPIC_API_KEY=your_claude_api_key
-   ```
 
-2. **Configure repositories** in `config/settings.yaml`:
-   ```yaml
-   repositories:
-     - name: "your-org/your-repo"
-       enabled: true
-       events: ["issues", "pull_request"]
-   ```
+#### 1. Edit `config/settings.yaml`:
+```yaml
+github:
+  token: "ghp_your_github_token"
+  webhook_secret: "generate_secure_secret_with_openssl"
+  
+claude:
+  api_key: "claude-code"  # or your Anthropic API key
 
-3. **Set up GitHub webhook** in your repository settings:
-   - URL: `https://your-domain.com/webhook`
-   - Content type: `application/json`
-   - Secret: Same as `GITHUB_WEBHOOK_SECRET`
-   - Events: Issues, Pull requests, etc.
+repositories:
+  - name: "your-org/your-repo"
+    enabled: true
+    events: ["issues", "pull_request"]
+    labels:
+      auto_apply: true
+    comments:
+      auto_post: true
+
+features:
+  signature_validation: true
+  auto_labeling: true
+  auto_commenting: true
+```
+
+#### 2. Generate webhook secret:
+```bash
+# Generate secure webhook secret
+openssl rand -hex 32
+```
+
+#### 3. Update webhook dispatch script shebang:
+```bash
+# Edit webhook_dispatch.py first line to use venv Python
+#!/home/your-user/hls/venv/bin/python
+```
+
+#### 4. Set up GitHub webhook:
+```bash
+# Use the setup script
+source venv/bin/activate
+python setup_github_webhook.py
+
+# Or manually in GitHub repository settings:
+# - URL: https://your-domain.com/hooks/github-webhook
+# - Content type: application/json
+# - Secret: Same as webhook_secret in settings.yaml
+# - Events: Issues, Pull requests, etc.
+```
 
 ### Running
-```bash
-# Start the service
-python -m hls.src.hls_handler.main
 
-# Or with uvicorn
-uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
+#### 1. Start webhook service with pm2:
+```bash
+# Install pm2 globally
+npm install -g pm2
+
+# Start webhook service
+pm2 start ecosystem.config.js
+
+# Save pm2 configuration
+pm2 save
+
+# Set up pm2 to start on boot
+pm2 startup
 ```
+
+#### 2. Or start webhook service manually:
+```bash
+# Run webhook service (port 9000)
+webhook -hooks hooks.json -port 9000 -verbose
+
+# Or run in background
+webhook -hooks hooks.json -port 9000 -verbose > webhook.log 2>&1 &
+```
+
+#### 3. (Optional) Run FastAPI service:
+```bash
+# Only needed if you want direct API access
+# The webhook service calls webhook_dispatch.py directly
+source venv/bin/activate
+python -m hls.src.hls_handler.main
+```
+
+#### 4. Monitor logs:
+```bash
+# Webhook service logs
+tail -f webhook.log
+
+# Application logs
+tail -f logs/webhook.log
+
+# pm2 logs
+pm2 logs hls-webhook
+```
+
+### Verify Setup
+
+#### 1. Test webhook endpoint
+```bash
+# Test if webhook service is accessible
+curl -X POST https://clidecoder.com/hooks/github-webhook \
+  -H "Content-Type: application/json" \
+  -d '{"test": "payload"}'
+```
+
+#### 2. Check GitHub webhook delivery
+1. Go to your repository Settings → Webhooks
+2. Click on your webhook
+3. Check "Recent Deliveries" tab
+4. Green checkmark = successful delivery
+5. Click on a delivery to see details
+
+#### 3. Monitor processing
+```bash
+# Watch real-time logs
+pm2 logs hls-webhook --lines 100
+
+# Check webhook statistics
+curl http://localhost:8000/stats
+
+# Check service health
+pm2 status
+```
+
+## 🔗 Chained Prompts
+
+### What are Chained Prompts?
+
+Chained prompts break complex AI analysis into multiple focused steps, maintaining context between each step for better reasoning and more accurate results.
+
+### Example: Issue Analysis Chain
+
+1. **Step 1 - Analysis**: Understand the issue and extract structured data
+   - Categorize as bug/feature/question
+   - Assess priority and complexity
+   - Extract technical areas and requirements
+
+2. **Step 2 - Response**: Generate appropriate response using analysis data
+   - Welcome the contributor
+   - Provide specific guidance based on issue type
+   - Suggest next steps and timeline
+
+### Benefits
+
+- **Better Accuracy** - Each step focuses on a specific task
+- **Context Preservation** - Conversation history maintained between steps
+- **Structured Data** - Extract and use metadata between steps
+- **Flexible Workflows** - Easy to add/modify steps
+
+### Configuration
+
+```yaml
+prompts:
+  templates:
+    issues:
+      analyze: "issues/analyze.md"    # Step 1: Analysis
+      respond: "issues/respond.md"    # Step 2: Response
+```
+
+See [Chained Prompts Guide](docs/CHAINED_PROMPTS.md) for implementation details.
+
+## ⏰ Backup Processing (Cron Jobs)
+
+### Automatic Issue Detection
+
+A cron job runs every hour to find and process issues that may have been missed by webhooks:
+
+- **Smart Detection** - Finds issues older than 30 minutes without `clide-analyzed` label
+- **Same Quality** - Uses identical chained prompt analysis as webhooks  
+- **Safety Mechanisms** - Rate limiting and concurrent execution prevention
+- **Comprehensive Logging** - Detailed logs for monitoring and debugging
+
+### Manual Processing
+
+```bash
+# Test mode (find issues without processing)
+python3 scripts/analyze_missed_issues.py --dry-run
+
+# Process issues older than 1 hour
+python3 scripts/analyze_missed_issues.py --min-age 60
+
+# Check what would be processed
+python3 scripts/analyze_missed_issues.py --dry-run --min-age 30
+```
+
+### Configuration
+
+```yaml
+cron_analysis:
+  enabled: true
+  min_age_minutes: 30        # Only process issues older than 30 minutes
+  max_issues_per_repo: 10    # Safety limit per repository  
+  delay_between_issues: 2    # Seconds between processing
+```
+
+See [Cron Jobs Documentation](docs/CRON_JOBS.md) for complete setup guide.
+
+## 📊 Monitoring & Analytics
+
+### Real-Time Monitoring
+
+```bash
+# Check processing status
+curl http://localhost:8000/stats
+
+# Monitor webhook logs
+tail -f logs/webhook.log
+
+# Monitor cron job logs
+tail -f logs/cron-analyze.log
+```
+
+### Key Metrics
+
+- **Processing Success Rate** - Percentage of successful webhook processing
+- **Average Response Time** - Time from webhook to completed analysis
+- **Issues Processed** - Total issues analyzed (webhooks + cron)
+- **API Rate Limits** - GitHub and Claude API usage tracking
 
 ## Documentation
 
 ### Core Documentation
+- **[Chained Prompts Guide](docs/CHAINED_PROMPTS.md)** - Multi-step prompt implementation
+- **[Cron Jobs Documentation](docs/CRON_JOBS.md)** - Backup processing system
 - **[Architecture Guide](ARCHITECTURE.md)** - Detailed system architecture and components
 - **[Deployment Guide](DEPLOYMENT.md)** - Complete deployment instructions and options
 - **[Limitations & Improvements](LIMITATIONS.md)** - Known issues and enhancement recommendations
@@ -102,41 +508,67 @@ uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
 ## Project Structure
 
 ```
-hsl/
-├── ARCHITECTURE.md          # System architecture documentation
-├── CLAUDE.md               # Claude Code guidance
-├── DEPLOYMENT.md           # Deployment instructions
-├── LIMITATIONS.md          # Known limitations and improvements
-├── README.md              # This file
-├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
+hls/
+├── webhook_dispatch.py      # Entry point called by webhook service
+├── hooks.json              # Webhook service configuration
+├── setup_github_webhook.py # GitHub webhook setup script
+├── ARCHITECTURE.md         # System architecture documentation
+├── CLAUDE.md              # Claude Code guidance
+├── DEPLOYMENT.md          # Deployment instructions
+├── LIMITATIONS.md         # Known limitations and improvements
+├── README.md             # This file
+├── requirements.txt      # Python dependencies
+├── venv/                # Python virtual environment
 ├── config/
-│   └── settings.example.yaml  # Configuration template
-├── prompts/              # Jinja2 prompt templates
-│   ├── issues/          # Issue analysis prompts
-│   ├── pull_requests/   # PR analysis prompts
-│   ├── reviews/         # Review response prompts
-│   ├── workflows/       # Workflow analysis prompts
-│   └── releases/        # Release announcement prompts
-└── hls/src/hls_handler/ # Core application code
-    ├── main.py          # FastAPI application entry point
-    ├── webhook_processor.py  # Core processing logic
-    ├── handlers.py      # Event-specific handlers
-    ├── clients.py       # API clients (Claude, GitHub)
-    ├── config.py        # Configuration management
-    ├── prompts.py       # Template management
+│   ├── settings.yaml         # Main configuration
+│   └── settings.example.yaml # Configuration template
+├── prompts/             # Jinja2 prompt templates
+│   ├── issues/         # Issue analysis prompts
+│   ├── pull_requests/  # PR analysis prompts
+│   ├── reviews/        # Review response prompts
+│   ├── workflows/      # Workflow analysis prompts
+│   └── releases/       # Release announcement prompts
+├── outputs/            # Analysis output files
+│   ├── issues/
+│   ├── pull_requests/
+│   └── ...
+├── logs/              # Application logs
+│   └── webhook.log
+└── hls/src/hsl_handler/ # Core application code
+    ├── main.py         # FastAPI application (optional)
+    ├── webhook_processor.py # Core processing logic
+    ├── handlers.py     # Event-specific handlers
+    ├── clients.py      # API clients (Claude, GitHub)
+    ├── config.py       # Configuration management
+    ├── prompts.py      # Template management
     └── logging_config.py # Logging setup
 ```
 
-## Example Workflow
+## Processing Flow Example
 
-1. **Developer opens an issue** in configured repository
-2. **GitHub sends webhook** to HLS service
-3. **HLS validates signature** and filters event
-4. **Claude analyzes** issue content using custom prompts
-5. **HLS applies labels** based on Claude's analysis
-6. **HLS posts comment** (optional) with analysis summary
-7. **Statistics updated** and event logged
+When a new issue is created on GitHub:
+
+1. **GitHub sends webhook** to `https://your-domain.com/hooks/github-webhook`
+2. **nginx receives HTTPS request** and proxies to webhook service on port 9000
+3. **webhook service validates** the request matches `hooks.json` rules
+4. **webhook service executes** `webhook_dispatch.py` with:
+   - JSON payload as command argument
+   - GitHub headers as environment variables
+5. **webhook_dispatch.py**:
+   - Loads settings from `config/settings.yaml`
+   - Validates webhook signature (HMAC-SHA256)
+   - Checks repository and event configuration
+   - Initializes WebhookProcessor
+6. **WebhookProcessor routes** to appropriate handler (e.g., IssueHandler)
+7. **Handler processes event**:
+   - Loads Jinja2 prompt template
+   - Sends prompt to Claude for analysis
+   - Parses Claude's response for labels and actions
+8. **GitHub API updates**:
+   - Applies suggested labels
+   - Posts analysis comment
+   - Marks issue as analyzed
+9. **Response returned** to GitHub with processing status
 
 ## Customization
 
@@ -201,10 +633,13 @@ tail -f logs/hsl.log
 
 ## Security
 
-- Webhook signatures are validated using HMAC-SHA256
-- API keys are stored in environment variables
-- No sensitive data is logged by default
-- Rate limiting prevents API abuse
+- **SSL/TLS termination** by nginx for encrypted webhook delivery
+- **Webhook signatures** validated using HMAC-SHA256
+- **Process isolation** with webhook service running dispatch script
+- **Virtual environment** isolates Python dependencies
+- **API keys** stored in configuration files (use proper file permissions)
+- **No sensitive data** logged by default
+- **Rate limiting** prevents API abuse
 
 ## License
 

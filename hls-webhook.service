@@ -1,0 +1,20 @@
+[Unit]
+Description=HLS GitHub Webhook Service
+After=network.target
+
+[Service]
+Type=simple
+User=clide
+WorkingDirectory=/home/clide/hls
+ExecStart=/home/clide/go/bin/webhook -hooks hooks.json -port 9000 -verbose
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/clide/hls/logs/webhook.log
+StandardError=append:/home/clide/hls/logs/webhook-error.log
+
+# Security options
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

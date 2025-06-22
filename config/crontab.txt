@@ -1,0 +1,22 @@
+# HLS Webhook Handler Cron Jobs
+# 
+# This file contains cron job definitions for the HLS webhook handler.
+# To install: crontab /home/clide/hls/config/crontab.txt
+#
+# Format: minute hour day month weekday command
+
+# Analyze missed issues every hour at 15 minutes past the hour
+# This gives the webhook handler time to process new issues before checking
+15 * * * * /home/clide/hls/scripts/cron_analyze_issues.sh
+
+# Optional: Run a health check every 30 minutes
+# Uncomment to enable regular health monitoring
+# */30 * * * * /home/clide/hls/scripts/health_check.sh
+
+# Optional: Clean up old log files weekly (every Sunday at 2 AM)
+# Uncomment to enable automatic log cleanup
+# 0 2 * * 0 find /home/clide/hls/logs -name "*.log" -mtime +7 -delete
+
+# Optional: Generate weekly summary report (every Monday at 9 AM)  
+# Uncomment to enable weekly reporting
+# 0 9 * * 1 /home/clide/hls/scripts/weekly_report.sh

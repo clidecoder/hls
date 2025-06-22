@@ -1,0 +1,5 @@
+{
+  "title": "Test issue for Clide webhook analysis",
+  "body": "Hi Clide! 👋\n\nThis is a test issue to demonstrate your webhook analysis capabilities.\n\n## Problem\nI want to test how you analyze GitHub issues and provide recommendations.\n\n## Expected Behavior\nClide should analyze this issue and provide:\n- Priority assessment\n- Category classification\n- Suggested labels\n- Recommended actions\n\n## Additional Context\nThis is part of testing the HLS webhook handler with real GitHub integration.\n\nPlease analyze this issue! 🤖",
+  "labels": ["test", "webhook"]
+}

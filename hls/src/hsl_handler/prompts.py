@@ -122,71 +122,22 @@ def create_prompt_context(event_type: str, payload: Dict[str, Any]) -> Dict[str,
     
     context = {
         "event_type": event_type,
-        "payload": payload
+        "payload": payload,
+        "repository": payload.get("repository", {}),
+        "sender": payload.get("sender", {})
     }
     
-    # Extract common fields based on event type
-    repository = payload.get("repository", {})
-    context.update({
-        "repository_name": repository.get("full_name", ""),
-        "repository_url": repository.get("html_url", ""),
-        "repository_description": repository.get("description", "")
-    })
-    
     if event_type == "issues":
-        issue = payload.get("issue", {})
-        context.update({
-            "issue_number": issue.get("number"),
-            "issue_title": issue.get("title", ""),
-            "issue_body": issue.get("body", ""),
-            "issue_user": issue.get("user", {}).get("login", ""),
-            "issue_url": issue.get("html_url", ""),
-            "issue_labels": [label["name"] for label in issue.get("labels", [])]
-        })
+        context["issue"] = payload.get("issue", {})
     
     elif event_type == "pull_request":
-        pr = payload.get("pull_request", {})
-        context.update({
-            "pr_number": pr.get("number"),
-            "pr_title": pr.get("title", ""),
-            "pr_body": pr.get("body", ""),
-            "pr_user": pr.get("user", {}).get("login", ""),
-            "pr_url": pr.get("html_url", ""),
-            "pr_labels": [label["name"] for label in pr.get("labels", [])],
-            "pr_state": pr.get("state", ""),
-            "pr_draft": pr.get("draft", False)
-        })
+        context["pull_request"] = payload.get("pull_request", {})
     
     elif event_type == "pull_request_review":
-        review = payload.get("review", {})
-        pr = payload.get("pull_request", {})
-        context.update({
-            "review_id": review.get("id"),
-            "review_state": review.get("state", ""),
-            "review_body": review.get("body", ""),
-            "reviewer": review.get("user", {}).get("login", ""),
-            "pr_number": pr.get("number"),
-            "pr_title": pr.get("title", ""),
-            "pr_user": pr.get("user", {}).get("login", "")
-        })
+        context["review"] = payload.get("review", {})
+        context["pull_request"] = payload.get("pull_request", {})
     
     elif event_type == "workflow_run":
-        workflow_run = payload.get("workflow_run", {})
-        context.update({
-            "workflow_name": workflow_run.get("name", ""),
-            "workflow_status": workflow_run.get("status", ""),
-            "workflow_conclusion": workflow_run.get("conclusion", ""),
-            "workflow_run_id": workflow_run.get("id"),
-            "workflow_url": workflow_run.get("html_url", ""),
-            "commit_sha": workflow_run.get("head_sha", ""),
-            "commit_message": workflow_run.get("head_commit", {}).get("message", "")
-        })
-    
-    # Add sender information
-    sender = payload.get("sender", {})
-    context.update({
-        "sender_login": sender.get("login", ""),
-        "sender_type": sender.get("type", "")
-    })
+        context["workflow_run"] = payload.get("workflow_run", {})
     
     return context

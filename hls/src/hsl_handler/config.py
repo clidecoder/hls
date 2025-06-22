@@ -34,6 +34,7 @@ class RepositoryConfig(BaseSettings):
     """Repository-specific configuration."""
     model_config = SettingsConfigDict(extra="ignore")
     name: str
+    enabled: bool = True
     events: List[str]
     settings: Dict[str, Any] = {}
 
@@ -71,6 +72,17 @@ class FeaturesConfig(BaseSettings):
     payload_logging: bool = False
 
 
+class CronAnalysisConfig(BaseSettings):
+    """Cron job configuration for analyzing missed issues."""
+    model_config = SettingsConfigDict(extra="ignore")
+    enabled: bool = True
+    min_age_minutes: int = 30
+    max_issues_per_repo: int = 10
+    delay_between_issues: int = 2
+    analyzed_label: str = "clide-analyzed"
+    log_level: str = "INFO"
+
+
 class Settings(BaseSettings):
     """Main settings class."""
     model_config = SettingsConfigDict(
@@ -88,6 +100,7 @@ class Settings(BaseSettings):
     outputs: OutputsConfig = OutputsConfig()
     logging: LoggingConfig = LoggingConfig()
     features: FeaturesConfig = FeaturesConfig()
+    cron_analysis: CronAnalysisConfig = CronAnalysisConfig()
 
     @classmethod
     def from_yaml(cls, config_path: str) -> "Settings":
@@ -126,3 +139,17 @@ class Settings(BaseSettings):
         if not repo_config:
             return False
         return event_type in repo_config.events
+
+
+def load_settings(config_path: Optional[str] = None) -> Settings:
+    """Load settings from file or environment."""
+    if config_path:
+        return Settings.from_yaml(config_path)
+    
+    # Default config path
+    default_path = "config/settings.yaml"
+    if os.path.exists(default_path):
+        return Settings.from_yaml(default_path)
+    
+    # Fall back to environment variables only
+    return Settings()
