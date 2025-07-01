@@ -35,6 +35,7 @@ class RepositoryConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     name: str
     enabled: bool = True
+    local_path: Optional[str] = None
     events: List[str]
     settings: Dict[str, Any] = {}
 

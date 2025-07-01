@@ -120,8 +120,13 @@ class ChainedPromptHandler(BaseHandler):
             # We'll pass the rendered prompt as the context, and an empty prompt
             step_context = prompt  # The rendered prompt contains all the information
             
+            # Get repository working directory from context (payload should be in accumulated_context)
+            working_directory = None
+            if 'payload' in accumulated_context:
+                working_directory = self.get_repository_working_directory(accumulated_context['payload'])
+            
             # Execute the prompt with conversation history
-            response = await self.claude_client.analyze("", step_context, conversation_history)
+            response = await self.claude_client.analyze("", step_context, conversation_history, working_directory=working_directory)
             
             # Extract data if function specified
             extracted_data = None

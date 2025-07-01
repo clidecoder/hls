@@ -1,0 +1,25 @@
+[Unit]
+Description=GitHub Webhook Handler Service
+After=network.target
+
+[Service]
+Type=simple
+User=clide
+Group=clide
+WorkingDirectory=/home/clide/hls
+ExecStart=/usr/bin/webhook -hooks /home/clide/hls/hooks.json -port 9000 -verbose -urlprefix ""
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=github-webhook
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/clide/hls
+
+[Install]
+WantedBy=multi-user.target

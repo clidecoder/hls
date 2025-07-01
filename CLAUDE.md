@@ -11,17 +11,23 @@ This is a GitHub webhook handler service built with FastAPI that integrates with
 The codebase uses a webhook service intermediary architecture:
 
 ```
-GitHub → nginx → webhook service → Python dispatch → Handler → Claude AI → GitHub API
-              (port 9000)        (webhook_dispatch.py)    ↓
-                   ↓                        ↓         Prompt Loader
-              Validation              Request Routing
+GitHub → Nginx Proxy Manager → webhook service → Python dispatch → Handler → Claude AI → GitHub API
+         (strips /hooks)         (port 9000)      (webhook_dispatch.py)     ↓
+              ↓                        ↓                    ↓          Prompt Loader
+         Path Transform          Validation          Request Routing    (with repo context)
 ```
 
 **Flow Components:**
-- **nginx**: Routes `/hooks` to webhook service on port 9000
-- **webhook service**: adnanh/webhook handles signature validation and dispatch
+- **Nginx Proxy Manager**: Routes `/hooks` to webhook service, strips path prefix
+- **webhook service**: adnanh/webhook with `-urlprefix ""` for NPM compatibility
 - **webhook_dispatch.py**: Python script that processes webhooks using existing modules
+- **Repository Context**: Claude Code executes from local repository paths for proper context
 - **FastAPI service**: Optional - can run on port 8000 for direct API access
+
+**Key Configuration:**
+- Webhook URL: `https://clidecoder.com/hooks/github-webhook`
+- Local repository path: `/home/clide/hls` (configured in settings.yaml)
+- Service configured for Nginx Proxy Manager path handling
 
 ### Key Modules
 
@@ -103,9 +109,17 @@ When adding new features:
 - **Direct Module Usage**: `webhook_dispatch.py` uses existing modules without FastAPI overhead
 - **Structured Logging**: All logs include request_id for correlation
 - **Template Customization**: Repository-specific prompts override defaults in settings.yaml
+- **Repository Context**: Claude Code executes from local repository directories for full codebase access
 
 ## Configuration Files
 
 - **hooks.json**: Webhook service configuration with trigger rules and dispatch settings
-- **nginx_update.conf**: nginx configuration showing `/hooks` routing to port 9000
+- **config/settings.yaml**: Repository configurations with local paths and event settings
+- **services/github-webhook.service**: Systemd service with NPM-compatible configuration
 - **webhook_dispatch.py**: Python script executed by webhook service for processing
+
+## Documentation
+
+- **[Startup Scripts](docs/startup-scripts.md)**: Service management and configuration
+- **[Nginx Proxy Configuration](docs/nginx-proxy-configuration.md)**: NPM setup and troubleshooting
+- **[Installation Guide](INSTALLATION.md)**: Quick setup instructions

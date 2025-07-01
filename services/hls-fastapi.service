@@ -1,0 +1,27 @@
+[Unit]
+Description=HLS FastAPI Service
+After=network.target
+
+[Service]
+Type=simple
+User=clide
+Group=clide
+WorkingDirectory=/home/clide/hls
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/home/clide/hls"
+ExecStart=/usr/bin/python3 -m uvicorn src.hls_handler.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hls-fastapi
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/clide/hls
+
+[Install]
+WantedBy=multi-user.target

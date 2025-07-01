@@ -29,6 +29,18 @@ class BaseHandler(ABC):
         """Handle the webhook event."""
         pass
     
+    def get_repository_working_directory(self, payload: Dict[str, Any]) -> Optional[str]:
+        """Get the local working directory for the repository from the payload."""
+        repository = payload.get("repository", {})
+        repo_name = repository.get("full_name")
+        if not repo_name:
+            return None
+            
+        repo_config = self.settings.get_repository_config(repo_name)
+        if repo_config:
+            return repo_config.local_path
+        return None
+    
     def extract_labels_from_analysis(self, analysis: str) -> List[str]:
         """Extract suggested labels from Claude's analysis."""
         labels = []
@@ -108,8 +120,11 @@ class IssueHandler(BaseHandler):
 {issue.get('body', '')}
 """
             
+            # Get repository working directory
+            working_directory = self.get_repository_working_directory(payload)
+            
             # Analyze with Claude
-            analysis = await self.claude_client.analyze(prompt, issue_context)
+            analysis = await self.claude_client.analyze(prompt, issue_context, working_directory=working_directory)
             
             # Save analysis
             output_dir = self.outputs_dir / self.settings.outputs.directories["issues"]
@@ -236,8 +251,11 @@ class PullRequestHandler(BaseHandler):
 ```
 """
             
+            # Get repository working directory
+            working_directory = self.get_repository_working_directory(payload)
+            
             # Analyze with Claude
-            analysis = await self.claude_client.analyze(prompt, pr_context)
+            analysis = await self.claude_client.analyze(prompt, pr_context, working_directory=working_directory)
             
             # Save analysis
             output_dir = self.outputs_dir / self.settings.outputs.directories["pull_requests"]
@@ -360,8 +378,11 @@ class ReviewHandler(BaseHandler):
 ```
 """
                 
+                # Get repository working directory
+                working_directory = self.get_repository_working_directory(payload)
+                
                 # Analyze with Claude
-                analysis = await self.claude_client.analyze(prompt, review_context)
+                analysis = await self.claude_client.analyze(prompt, review_context, working_directory=working_directory)
                 
                 # Save analysis
                 output_dir = self.outputs_dir / self.settings.outputs.directories["reviews"]
@@ -457,8 +478,11 @@ class WorkflowHandler(BaseHandler):
 {workflow_run.get('head_commit', {}).get('message', '')}
 """
             
+            # Get repository working directory
+            working_directory = self.get_repository_working_directory(payload)
+            
             # Analyze with Claude
-            analysis = await self.claude_client.analyze(prompt, workflow_context)
+            analysis = await self.claude_client.analyze(prompt, workflow_context, working_directory=working_directory)
             
             # Save analysis
             output_dir = self.outputs_dir / self.settings.outputs.directories["workflows"]

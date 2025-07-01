@@ -25,13 +25,14 @@ class ClaudeClient:
         self._request_count = 0
         self._last_request_time = 0.0
     
-    async def analyze(self, prompt: str, context: str, conversation_history: Optional[str] = None) -> str:
+    async def analyze(self, prompt: str, context: str, conversation_history: Optional[str] = None, working_directory: Optional[str] = None) -> str:
         """Analyze content using Claude via Claude Code.
         
         Args:
             prompt: The prompt to send to Claude
             context: The immediate context for this request
             conversation_history: Optional previous conversation for chained prompts
+            working_directory: Optional directory to execute Claude Code from
         """
         
         # Simple rate limiting
@@ -58,14 +59,16 @@ class ClaudeClient:
             
             logger.info("Sending request to Claude Code", 
                        request_count=self._request_count,
-                       has_conversation_history=bool(conversation_history))
+                       has_conversation_history=bool(conversation_history),
+                       working_directory=working_directory)
             
             # Make call in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
                 self._make_claude_code_request,
-                full_prompt
+                full_prompt,
+                working_directory
             )
             
             logger.info("Received response from Claude Code", response_length=len(response))
@@ -76,7 +79,7 @@ class ClaudeClient:
             # Return a mock response for testing
             return f"Claude Code analysis: {prompt[:100]}..."
     
-    def _make_claude_code_request(self, prompt: str) -> str:
+    def _make_claude_code_request(self, prompt: str, working_directory: Optional[str] = None) -> str:
         """Make a request to Claude via Claude Code CLI."""
         try:
             # Create a temporary file with the prompt
@@ -89,7 +92,7 @@ class ClaudeClient:
                 # Check if we're in a Claude Code environment
                 result = subprocess.run([
                     'claude', 'prompt', temp_file
-                ], capture_output=True, text=True, timeout=30)
+                ], capture_output=True, text=True, timeout=30, cwd=working_directory)
                 
                 if result.returncode == 0:
                     return result.stdout.strip()
