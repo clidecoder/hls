@@ -1,0 +1,93 @@
+# HLS GitHub Webhook Handler Configuration
+# Container-optimized version
+
+server:
+  host: "${HLS_HOST:-0.0.0.0}"
+  port: ${HLS_PORT:-8000}
+  webhook_path: "${HLS_WEBHOOK_PATH:-/webhook}"
+
+github:
+  token: "${GITHUB_TOKEN}"
+  webhook_secret: "${GITHUB_WEBHOOK_SECRET}"
+  base_url: "https://api.github.com"
+
+claude:
+  api_key: "${ANTHROPIC_API_KEY:-claude-code}"
+  model: "claude-3-5-sonnet-20241022"
+  max_tokens: 4000
+  temperature: 0.1
+  timeout: 60
+
+# Example repository configuration
+repositories:
+  - name: "your-org/your-repo"
+    enabled: true
+    events:
+      - "issues"
+      - "pull_request"
+      - "pull_request_review"
+    labels:
+      auto_apply: true
+      categories:
+        - "bug"
+        - "enhancement"
+        - "question"
+        - "documentation"
+    comments:
+      auto_post: false
+      event_types:
+        - "issues.opened"
+        - "pull_request.opened"
+
+features:
+  signature_validation: true
+  async_processing: true
+  auto_labeling: true
+  auto_commenting: false
+  save_analyses: true
+  auto_setup_labels: false
+
+prompts:
+  base_dir: "/app/prompts"
+  defaults:
+    issues:
+      analyze: "issues/analyze.j2"
+      comment: "issues/comment.j2"
+    pull_requests:
+      analyze: "pull_requests/analyze.j2"
+      review: "pull_requests/review.j2"
+      comment: "pull_requests/comment.j2"
+    reviews:
+      analyze: "reviews/analyze.j2"
+      respond: "reviews/respond.j2"
+    workflows:
+      analyze: "workflows/analyze.j2"
+      failure_comment: "workflows/failure_comment.j2"
+    releases:
+      analyze: "releases/analyze.j2"
+      announcement: "releases/announcement.j2"
+
+outputs:
+  base_dir: "/app/outputs"
+  save_analyses: true
+  save_stats: true
+  include_timestamps: true
+
+logging:
+  level: "INFO"
+  format: "json"
+  file: "/app/logs/hsl.log"
+  enable_request_ids: true
+  log_payloads: false
+
+performance:
+  max_concurrent_webhooks: 10
+  claude_timeout: 60
+  github_timeout: 30
+  max_payload_size: 10485760
+
+development:
+  debug: false
+  skip_signature_validation: false
+  mock_claude: false
+  mock_github: false

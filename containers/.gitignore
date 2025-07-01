@@ -1,0 +1,32 @@
+# Environment files
+.env
+.env.local
+
+# Shared state directory (contains persistent data)
+shared_state/
+
+# Docker volumes (if running without bind mounts)
+volumes/
+
+# Backup files
+*.tar.gz
+*.zip
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Log files (if not in shared_state)
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

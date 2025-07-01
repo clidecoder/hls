@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  nginx-proxy:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/hls-nginx:latest
+    container_name: hls-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+    volumes:
+      - ./config/nginx:/etc/nginx/conf.d
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - hls-network
+
+  app:
+    build:
+      context: ..
+      dockerfile: containers/app/Dockerfile
+    image: ghcr.io/${GITHUB_USERNAME}/hls-app:latest
+    container_name: hls-app
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-claude-code}
+      - HLS_HOST=0.0.0.0
+      - HLS_PORT=8000
+      - HLS_WEBHOOK_PATH=/webhook
+    volumes:
+      - ./config:/config:ro
+      - ./shared_state/logs:/app/logs
+      - ./shared_state/outputs:/app/outputs
+      - ./shared_state/sqlite:/app/data
+      - ./shared_state/docs:/app/docs
+    expose:
+      - "8000"
+      - "9000"
+    restart: unless-stopped
+    networks:
+      - hls-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  letsencrypt:
+    driver: local
+  certbot-www:
+    driver: local
+
+networks:
+  hls-network:
+    driver: bridge
