@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'hls-webhook',
     script: 'webhook',
-    args: '-hooks hooks.json -port 9000 -verbose',
+    args: '-hooks services/hooks.json -port 9000 -verbose',
     cwd: '/home/clide/hls',
     autorestart: true,
     watch: false,

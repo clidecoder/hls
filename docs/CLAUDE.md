@@ -33,7 +33,8 @@ GitHub → Nginx Proxy Manager → webhook service → Python dispatch → Handl
 
 - **main.py**: FastAPI application entry point with webhook routing and validation
 - **webhook_processor.py**: Core orchestration that coordinates handlers, clients, and prompts
-- **handlers.py**: Event-specific handlers using Abstract Base Class pattern (IssueHandler, PullRequestHandler, etc.)
+- **handlers.py**: Event-specific handlers using Abstract Base Class pattern (IssueHandler, PullRequestHandler, GenericHandler, etc.)
+- **chained_handlers.py**: Enhanced handlers with multi-step chained prompt support
 - **clients.py**: API clients for Claude (using subprocess) and GitHub (using PyGithub)
 - **config.py**: Pydantic models for settings management with YAML configuration loading
 - **prompts.py**: Jinja2 template loader for dynamic prompt generation
@@ -50,7 +51,7 @@ pip install -r requirements.txt
 # Or: go install github.com/adnanh/webhook@latest
 
 # Run webhook service (production)
-webhook -hooks hooks.json -port 9000 -verbose
+webhook -hooks services/hooks.json -port 9000 -verbose
 
 # Test webhook dispatch script directly
 echo '{"repository":{"full_name":"test/repo"}}' | GITHUB_EVENT=issues GITHUB_DELIVERY=123 ./webhook_dispatch.py
@@ -60,7 +61,7 @@ python -m hls.src.hls_handler.main
 # Or: uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
 
 # Test Claude response parsing
-python test_clide_response.py
+python test/test_clide_response.py
 ```
 
 ## Configuration
@@ -86,7 +87,7 @@ The service uses layered configuration:
 ## Event Processing Flow
 
 1. **nginx** receives webhook at `/hooks` and forwards to webhook service (port 9000)
-2. **webhook service** validates request against `hooks.json` trigger rules
+2. **webhook service** validates request against `services/hooks.json` trigger rules
 3. **webhook service** executes `webhook_dispatch.py` with GitHub headers and JSON payload
 4. **webhook_dispatch.py** performs signature validation (if enabled)
 5. Repository and event type filtering
@@ -98,14 +99,14 @@ The service uses layered configuration:
 ## Testing
 
 When adding new features:
-- Test webhook signatures with the provided `test_webhook_signature.py` script
-- Verify Claude response parsing with `test_clide_response.py`
+- Test webhook signatures with the provided `test_webhook_signature.py` script (if available)
+- Verify Claude response parsing with `test/test_clide_response.py`
 - Check handler logic by sending test payloads to the webhook endpoint
 
 ## Important Patterns
 
 - **Abstract Base Classes**: All handlers inherit from `BaseHandler` in handlers.py
-- **Webhook Service Integration**: Use `hooks.json` to configure webhook service routing
+- **Webhook Service Integration**: Use `services/hooks.json` to configure webhook service routing
 - **Direct Module Usage**: `webhook_dispatch.py` uses existing modules without FastAPI overhead
 - **Structured Logging**: All logs include request_id for correlation
 - **Template Customization**: Repository-specific prompts override defaults in settings.yaml
@@ -113,9 +114,10 @@ When adding new features:
 
 ## Configuration Files
 
-- **hooks.json**: Webhook service configuration with trigger rules and dispatch settings
+- **services/hooks.json**: Webhook service configuration with trigger rules and dispatch settings
 - **config/settings.yaml**: Repository configurations with local paths and event settings
-- **services/github-webhook.service**: Systemd service with NPM-compatible configuration
+- **services/systemd/*.service**: Systemd services with NPM-compatible configuration
+- **services/pm2/ecosystem.config.js**: PM2 process manager configuration
 - **webhook_dispatch.py**: Python script executed by webhook service for processing
 
 ## Documentation

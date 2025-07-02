@@ -11,41 +11,60 @@ The primary configuration file that controls all aspects of the system.
 ```yaml
 # Server settings
 server:
-  host: "0.0.0.0"
-  port: 8000
-  webhook_path: "/webhook"
+  host: "0.0.0.0"                           # Host to bind to
+  port: 8000                                # Port for FastAPI service (optional)
+  webhook_path: "/webhook"                   # Webhook endpoint path
 
 # GitHub API configuration
 github:
-  token: "${GITHUB_TOKEN}"                    # GitHub Personal Access Token
-  webhook_secret: "${GITHUB_WEBHOOK_SECRET}"  # Webhook signature secret
-  base_url: "https://api.github.com"          # GitHub API base URL
+  token: "ghp_xxx"                          # GitHub Personal Access Token
+  webhook_secret: "your-webhook-secret"      # Webhook signature secret
+  base_url: "https://api.github.com"        # GitHub API base URL
 
 # Claude AI configuration
 claude:
-  api_key: "claude-code"                      # API key or "claude-code" for CLI
-  model: "claude-3-5-sonnet-20241022"        # Claude model to use
-  max_tokens: 4000                           # Maximum tokens per request
-  temperature: 0.1                           # Response creativity (0.0-1.0)
-  timeout: 60                                # Request timeout in seconds
+  api_key: "claude-code"                    # "claude-code" for CLI or actual API key
+  model: "claude-3-5-sonnet-20241022"      # Claude model to use
+  max_tokens: 4000                         # Maximum tokens per request
+  temperature: 0.1                         # Response creativity (0.0-1.0)
+  timeout: 60                              # Request timeout in seconds
 
 # Repository configuration
 repositories:
-  - name: "org/repo"                         # GitHub repository name
-    enabled: true                            # Enable processing for this repo
-    events: ["issues", "pull_request"]       # Events to process
-    settings:                                # Repository-specific settings
-      apply_labels: true                     # Auto-apply AI-suggested labels
-      post_analysis_comments: true           # Post AI analysis as comments
-      auto_close_invalid: false              # Auto-close invalid issues
+  - name: "org/repo"                       # GitHub repository name
+    enabled: true                          # Enable processing for this repo
+    local_path: "/path/to/local/repo"      # Local repository path for context
+    events: ["issues", "pull_request"]     # Events to process
+    labels:                                # Label configuration
+      auto_apply: true                     # Auto-apply AI-suggested labels
+    comments:                              # Comment configuration
+      auto_post: true                      # Post AI analysis as comments
 
 # Feature flags
 features:
-  signature_validation: true                 # Validate webhook signatures
-  async_processing: false                    # Enable async processing
-  auto_labeling: true                       # Enable automatic labeling
-  auto_commenting: true                     # Enable automatic commenting
-  save_analyses: true                       # Save analysis files
+  signature_validation: false             # Validate webhook signatures
+  async_processing: false                 # Enable async processing
+  auto_labeling: true                     # Enable automatic labeling
+  auto_commenting: true                   # Enable automatic commenting
+  save_analyses: true                     # Save analysis files to outputs/
+
+# Logging configuration
+logging:
+  level: "INFO"                           # Log level
+  format: "json"                          # Log format (json/text)
+  file: "logs/webhook.log"                # Log file path
+  max_size_mb: 10                         # Max log file size
+  backup_count: 5                         # Number of backup files
+
+# Output configuration
+outputs:
+  base_dir: "outputs"                     # Base directory for analysis files
+  directories:                            # Subdirectories for each event type
+    issues: "issues"
+    pull_requests: "pull_requests"
+    reviews: "reviews"
+    workflows: "workflows"
+    releases: "releases"
 
 # Prompt configuration
 prompts:
@@ -56,24 +75,10 @@ prompts:
       analyze: "issues/analyze.md"          # Chained: Step 1 - Analysis  
       respond: "issues/respond.md"          # Chained: Step 2 - Response
     pull_request:
-      opened: "pull_requests/analyze.j2"    # PR analysis template
-
-# Output configuration
-outputs:
-  base_dir: "outputs"                       # Base directory for output files
-  directories:
-    issues: "issues"                        # Issue analysis outputs
-    pull_requests: "pull_requests"          # PR analysis outputs
-    reviews: "reviews"                      # Review outputs
-    workflows: "workflows"                  # Workflow outputs
-
-# Logging configuration
-logging:
-  level: "INFO"                             # Log level (DEBUG, INFO, WARNING, ERROR)
-  format: "json"                            # Log format (json, text)
-  file: "logs/webhook.log"                  # Log file path
-  max_size_mb: 10                          # Max log file size
-  backup_count: 5                          # Number of backup files
+      opened: "pull_requests/new_pr.md"     # PR analysis template
+      new_pr: "pull_requests/new_pr.md"     # New PR template
+      pr_updated: "pull_requests/pr_updated.md" # Updated PR template
+      default: "pull_requests/default.md"   # Default PR template
 
 # Cron job configuration for missed issues
 cron_analysis:
@@ -83,6 +88,19 @@ cron_analysis:
   delay_between_issues: 2                   # Seconds between processing
   analyzed_label: "clide-analyzed"          # Label marking analyzed issues
   log_level: "INFO"                         # Cron job log level
+
+# Auto-accept invitations configuration
+auto_accept_invitations:
+  enabled: true                             # Enable auto-accept functionality
+  check_interval_minutes: 10                # Check interval for new invitations
+  criteria:
+    repository_patterns: ["*"]              # Repository patterns to accept
+  post_acceptance:
+    clone_repository: true                  # Clone repo after acceptance
+    register_webhook: true                  # Register webhook automatically
+    update_config: true                     # Update local configuration
+    webhook_url: "https://your-domain.com/hooks/github-webhook"
+    webhook_events: ["issues", "pull_request", "pull_request_review"]
 
 # Development settings
 development:
@@ -109,7 +127,7 @@ LOG_LEVEL=INFO
 WEBHOOK_PORT=9000
 ```
 
-### Webhook Service: `hooks.json`
+### Webhook Service: `services/hooks.json`
 
 Configuration for the adnanh/webhook service:
 
@@ -331,7 +349,7 @@ features:
   
 logging:
   level: "INFO"
-  file: "/var/log/hls/webhook.log"
+  file: "./logs/webhook.log"
   
 development:
   debug: false

@@ -154,7 +154,7 @@ GitHub Repository → Webhook → HLS Service → Claude API → GitHub API
   - `X-GitHub-Event`: Event type
   - `X-GitHub-Delivery`: Delivery ID
   - `X-Hub-Signature-256`: HMAC signature
-- **Response**: Processing status or queued confirmation
+- **Response**: Processing status confirmation
 
 ### `GET /stats`
 - **Purpose**: Processing statistics

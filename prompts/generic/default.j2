@@ -1,0 +1,25 @@
+Analyze this GitHub webhook event and provide insights about what happened and any recommended actions.
+
+## Event Information
+- **Event Type**: {{ event_type }}
+- **Repository**: {{ repository.full_name }}
+- **Action**: {{ action }}
+- **Sender**: {{ sender.login }} ({{ sender.type }})
+- **Timestamp**: {{ timestamp }}
+
+## Context
+This is a GitHub webhook event that was triggered in the repository. Please analyze what happened and provide:
+
+1. **Event Summary**: What triggered this event and what changes occurred?
+2. **Impact Analysis**: What is the potential impact of this event on the repository or project?
+3. **Key Details**: Extract and highlight the most important information from the event payload
+4. **Automation Opportunities**: Are there any automation opportunities or process improvements that could be implemented?
+5. **Follow-up Actions**: What follow-up actions (if any) should be taken?
+
+## Additional Notes
+- Focus on providing actionable insights
+- Consider the repository context when analyzing the event
+- Highlight any unusual or noteworthy aspects of the event
+- Suggest labels or categorization if applicable
+
+Remember that this analysis will be used to help repository maintainers understand and respond to events in their repositories.

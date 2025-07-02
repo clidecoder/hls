@@ -14,13 +14,13 @@
 - **Issue**: Statistics and processing state stored in memory
 - **Impact**: Data lost on service restart, no persistence across deployments
 - **Symptoms**: Lost metrics, inability to track long-term trends
-- **Recommendation**: Move to external storage (Redis, PostgreSQL)
+- **Recommendation**: Implement file-based storage or simple caching
 
 #### **Background Task Limitations**
 - **Issue**: FastAPI BackgroundTasks are not persistent
 - **Impact**: Tasks lost on service restart or crash
 - **Symptoms**: Incomplete webhook processing, lost events
-- **Recommendation**: Implement persistent message queue (Celery + Redis/RabbitMQ)
+- **Recommendation**: Implement proper error handling and logging
 
 ### 2. Reliability Issues
 
@@ -36,11 +36,11 @@
 - **Symptoms**: Duplicate comments, increased API costs
 - **Recommendation**: Implement webhook deduplication with TTL cache
 
-#### **No Dead Letter Queue**
+#### **No Failed Event Recovery**
 - **Issue**: Permanently failed events are lost
 - **Impact**: No way to recover from persistent failures
 - **Symptoms**: Silent failures, missing event processing
-- **Recommendation**: Implement DLQ for manual intervention
+- **Recommendation**: Implement enhanced error logging and manual recovery processes
 
 ### 3. Cost Management Gaps
 
@@ -111,34 +111,37 @@
 
 ### High Priority (Production Readiness)
 
-1. **Implement Persistent Message Queue**
+1. **Implement Enhanced Error Handling**
    ```python
-   # Example with Celery + Redis
-   from celery import Celery
+   import asyncio
+   from typing import Optional
    
-   celery_app = Celery('hsl', broker='redis://localhost:6379')
-   
-   @celery_app.task(bind=True, max_retries=3)
-   def process_webhook_task(self, event_type, payload, delivery_id):
-       try:
-           # Processing logic
-           return webhook_processor.process_webhook(...)
-       except Exception as exc:
-           raise self.retry(exc=exc, countdown=60)
+   async def process_webhook_with_retry(event_type, payload, delivery_id, max_retries=3):
+       for attempt in range(max_retries):
+           try:
+               return await webhook_processor.process_webhook(...)
+           except Exception as e:
+               logger.error(f"Attempt {attempt + 1} failed: {e}")
+               if attempt == max_retries - 1:
+                   raise
+               await asyncio.sleep(2 ** attempt)  # Exponential backoff
    ```
 
 2. **Add Webhook Deduplication**
    ```python
    import hashlib
-   import redis
+   import json
+   from pathlib import Path
    
-   redis_client = redis.Redis()
+   DEDUP_FILE = Path("logs/webhook_dedup.json")
    
    def is_duplicate_webhook(delivery_id, payload_hash):
-       key = f"webhook:{delivery_id}:{payload_hash}"
-       if redis_client.exists(key):
-           return True
-       redis_client.setex(key, 3600, "1")  # 1 hour TTL
+       key = f"{delivery_id}:{payload_hash}"
+       # Simple file-based deduplication (could be enhanced)
+       if DEDUP_FILE.exists():
+           with open(DEDUP_FILE) as f:
+               data = json.load(f)
+               return key in data
        return False
    ```
 
@@ -239,10 +242,10 @@ GitHub → Webhook Service → Event Bus → Processing Services → Claude → 
 
 ### Option 3: Enhanced Current Architecture
 ```
-GitHub → Load Balancer → FastAPI → Redis Queue → Workers → Claude → GitHub
+GitHub → Load Balancer → FastAPI → File-based Processing → Claude → GitHub
 ```
-**Benefits**: Familiar stack, incremental improvement, good performance
-**Drawbacks**: Still requires operational overhead
+**Benefits**: Familiar stack, incremental improvement, minimal dependencies
+**Drawbacks**: Limited scalability compared to distributed solutions
 
 ## Migration Strategy
 
@@ -252,9 +255,9 @@ GitHub → Load Balancer → FastAPI → Redis Queue → Workers → Claude → 
 - Improve error handling
 
 ### Phase 2: Scalability (Weeks 3-4)
-- Add message queue (Redis + Celery)
-- Implement horizontal scaling
-- Add load balancer
+- Implement horizontal scaling strategies
+- Add load balancer support
+- Optimize webhook processing
 
 ### Phase 3: Optimization (Weeks 5-6)
 - Implement smart filtering

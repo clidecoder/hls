@@ -78,7 +78,7 @@ location /hooks {
 
 ## Step 2: Verify adnanh/webhook Configuration
 
-Your existing `hooks.json` should remain unchanged:
+Your existing `services/hooks.json` should remain unchanged:
 
 ```json
 [
@@ -139,10 +139,10 @@ Events: Issues, Pull requests, etc.
 ### Start adnanh/webhook service
 ```bash
 # Start webhook service on port 9000
-webhook -hooks hooks.json -port 9000 -verbose
+webhook -hooks services/hooks.json -port 9000 -verbose
 
 # Or with systemd/pm2 (as per your existing setup)
-pm2 start ecosystem.config.js
+pm2 start services/pm2/ecosystem.config.js
 ```
 
 ### Verify the chain is working
@@ -154,7 +154,7 @@ curl -X POST https://clidecoder.com/hooks/github-webhook \
   -d '{"zen": "test"}'
 
 # Check webhook service logs
-tail -f webhook.log
+tail -f logs/webhook.log
 
 # Check HLS processing logs
 tail -f logs/webhook.log
@@ -214,7 +214,7 @@ curl -X POST http://localhost:9000/hooks/github-webhook \
 
 # Monitor processing chain
 tail -f /var/log/nginx/access.log    # NPM logs
-tail -f webhook.log                  # webhook service logs
+tail -f logs/webhook.log                  # webhook service logs
 tail -f logs/webhook.log             # HLS processing logs
 ```
 

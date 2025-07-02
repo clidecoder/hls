@@ -4,7 +4,7 @@
 
 ## Overview
 
-The HLS (Heuristic Learning System) webhook handler is a production-ready GitHub webhook service that uses Claude AI to automatically analyze issues, pull requests, and other GitHub events. It features advanced chained prompts for multi-step analysis and automatic backup processing via cron jobs.
+The HLS (Hook Line Sinker) webhook handler is a production-ready GitHub webhook service that uses Claude AI to automatically analyze issues, pull requests, and other GitHub events. It features advanced chained prompts for multi-step analysis and automatic backup processing via cron jobs.
 
 ## Architecture Overview
 
@@ -85,7 +85,7 @@ server {
 }
 ```
 
-#### 2. **adnanh/webhook Configuration** (`hooks.json`)
+#### 2. **adnanh/webhook Configuration** (`services/hooks.json`)
 ```json
 [
   {
@@ -310,7 +310,7 @@ python setup_github_webhook.py
 npm install -g pm2
 
 # Start webhook service
-pm2 start ecosystem.config.js
+pm2 start services/pm2/ecosystem.config.js
 
 # Save pm2 configuration
 pm2 save
@@ -322,10 +322,10 @@ pm2 startup
 #### 2. Or start webhook service manually:
 ```bash
 # Run webhook service (port 9000)
-webhook -hooks hooks.json -port 9000 -verbose
+webhook -hooks services/hooks.json -port 9000 -verbose
 
 # Or run in background
-webhook -hooks hooks.json -port 9000 -verbose > webhook.log 2>&1 &
+webhook -hooks services/hooks.json -port 9000 -verbose > logs/webhook.log 2>&1 &
 ```
 
 #### 3. (Optional) Run FastAPI service:
@@ -339,7 +339,7 @@ python -m hls.src.hls_handler.main
 #### 4. Monitor logs:
 ```bash
 # Webhook service logs
-tail -f webhook.log
+tail -f logs/webhook.log
 
 # Application logs
 tail -f logs/webhook.log
@@ -474,15 +474,33 @@ tail -f logs/cron-analyze.log
 
 ## Documentation
 
-### Core Documentation
+### 📚 Core Documentation
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system architecture and components
+- **[Architecture V2](docs/ARCHITECTURE_V2.md)** - Enhanced multi-project webhook architecture
+- **[Installation Guide](docs/INSTALLATION.md)** - Step-by-step installation instructions
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Comprehensive configuration documentation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete deployment instructions and options
+- **[Development Guide](docs/DEVELOPMENT.md)** - Local development setup and best practices
+
+### 🔧 Features & Components
 - **[Chained Prompts Guide](docs/CHAINED_PROMPTS.md)** - Multi-step prompt implementation
 - **[Cron Jobs Documentation](docs/CRON_JOBS.md)** - Backup processing system
-- **[Architecture Guide](ARCHITECTURE.md)** - Detailed system architecture and components
-- **[Deployment Guide](DEPLOYMENT.md)** - Complete deployment instructions and options
-- **[Limitations & Improvements](LIMITATIONS.md)** - Known issues and enhancement recommendations
-- **[Claude Code Guide](CLAUDE.md)** - Instructions for Claude Code when working with this repository
+- **[Auto-Accept Invitations](docs/auto-accept-invitations.md)** - Automatic repository invitation handling
+- **[Nginx Proxy Configuration](docs/nginx-proxy-configuration.md)** - Nginx setup for webhook proxying
+- **[Nginx Proxy Manager Config](docs/nginx-proxy-manager-config.md)** - NPM configuration details
+- **[Nginx Proxy Manager](docs/nginx-proxy-manager.md)** - Using Nginx Proxy Manager
 
-### Configuration
+### 🚀 Setup & Operations
+- **[Startup Scripts](docs/startup-scripts.md)** - Service management and automation
+- **[Monitoring Guide](docs/MONITORING.md)** - System monitoring and observability
+- **[Integration Plan](docs/INTEGRATION_PLAN.md)** - Integration strategies and planning
+
+### 📖 Reference
+- **[Claude Code Guide](docs/CLAUDE.md)** - Instructions for Claude Code when working with this repository
+- **[Limitations & Improvements](docs/LIMITATIONS.md)** - Known issues and enhancement recommendations
+- **[Test PR Description](docs/test_pr_description.md)** - Example PR description for testing
+
+### Configuration Templates
 - **[Example Configuration](config/settings.example.yaml)** - Comprehensive configuration template
 - **[Environment Variables](.env.example)** - Environment variable template
 
@@ -500,45 +518,104 @@ tail -f logs/cron-analyze.log
 | `pull_request` | Pull request events | Review, labeling, size estimation |
 | `pull_request_review` | PR review events | Response generation, analysis |
 | `workflow_run` | GitHub Actions events | Failure analysis, reporting |
-| `release` | Release events | Announcement generation |
+| `push` | Code push events | Commit analysis, change summary |
+| `release` | Release events | Release quality analysis |
+| `deployment` | Deployment events | Deployment readiness assessment |
+| `fork` | Repository fork events | Fork tracking and analysis |
+| `star` | Star/unstar events | Star tracking (lightweight) |
+| `watch` | Watch/unwatch events | Watch tracking (lightweight) |
+| `member` | Member access changes | Access change analysis |
+| `team` | Team events | Team change analysis |
+| `project` | Project board events | Project management analysis |
+| `milestone` | Milestone events | Milestone progress analysis |
+| `commit_comment` | Commit comments | Comment analysis |
+| **Generic Handler** | Any unsupported event | Fallback analysis for all events |
+
+**Note**: The system includes a GenericHandler that automatically processes any GitHub webhook event not explicitly supported, ensuring comprehensive coverage.
 
 ## Project Structure
 
 ```
 hls/
-├── webhook_dispatch.py      # Entry point called by webhook service
-├── hooks.json              # Webhook service configuration
-├── setup_github_webhook.py # GitHub webhook setup script
-├── ARCHITECTURE.md         # System architecture documentation
-├── CLAUDE.md              # Claude Code guidance
-├── DEPLOYMENT.md          # Deployment instructions
-├── LIMITATIONS.md         # Known limitations and improvements
-├── README.md             # This file
-├── requirements.txt      # Python dependencies
-├── venv/                # Python virtual environment
-├── config/
-│   ├── settings.yaml         # Main configuration
-│   └── settings.example.yaml # Configuration template
-├── prompts/             # Jinja2 prompt templates
-│   ├── issues/         # Issue analysis prompts
-│   ├── pull_requests/  # PR analysis prompts
-│   ├── reviews/        # Review response prompts
-│   ├── workflows/      # Workflow analysis prompts
-│   └── releases/       # Release announcement prompts
-├── outputs/            # Analysis output files
-│   ├── issues/
-│   ├── pull_requests/
-│   └── ...
-├── logs/              # Application logs
-│   └── webhook.log
-└── hls/src/hsl_handler/ # Core application code
-    ├── main.py         # FastAPI application (optional)
-    ├── webhook_processor.py # Core processing logic
-    ├── handlers.py     # Event-specific handlers
-    ├── clients.py      # API clients (Claude, GitHub)
-    ├── config.py       # Configuration management
-    ├── prompts.py      # Template management
-    └── logging_config.py # Logging setup
+├── webhook_dispatch.py         # Entry point called by webhook service
+├── setup_github_webhook.py    # GitHub webhook setup script
+├── install.sh                 # Installation script
+├── README.md                  # This file
+├── requirements.txt           # Python dependencies
+├── venv/                      # Python virtual environment
+├── archive/                   # Archived configuration files
+│   └── nginx-configs/         # Legacy nginx configurations
+├── config/                    # Configuration files
+│   ├── settings.yaml          # Main configuration
+│   ├── settings.example.yaml  # Configuration template
+│   ├── settings.yaml.backup   # Configuration backup
+│   └── crontab.txt           # Cron job configuration
+├── docs/                      # All documentation
+│   ├── ARCHITECTURE.md        # System architecture
+│   ├── ARCHITECTURE_V2.md     # Enhanced architecture
+│   ├── CLAUDE.md             # Claude Code guidance
+│   ├── DEPLOYMENT.md         # Deployment instructions
+│   ├── INSTALLATION.md       # Installation guide
+│   ├── CONFIGURATION.md      # Configuration guide
+│   ├── DEVELOPMENT.md        # Development setup
+│   ├── MONITORING.md         # Monitoring and observability
+│   ├── CHAINED_PROMPTS.md    # Multi-step prompt guide
+│   ├── CRON_JOBS.md          # Backup processing system
+│   ├── LIMITATIONS.md        # Known issues and improvements
+│   └── ...                   # Other documentation files
+├── examples/                  # Code examples
+│   └── enable_chained_prompts.py
+├── hls/                      # Core application code
+│   ├── src/hsl_handler/      # Main handler modules
+│   │   ├── main.py           # FastAPI application (optional)
+│   │   ├── webhook_processor.py # Core processing logic
+│   │   ├── handlers.py       # Event-specific handlers
+│   │   ├── chained_handlers.py # Chained prompt handlers
+│   │   ├── clients.py        # API clients (Claude, GitHub)
+│   │   ├── config.py         # Configuration management
+│   │   ├── prompts.py        # Template management
+│   │   └── logging_config.py # Logging setup
+│   └── tests/                # Test files for core modules
+├── logs/                     # Application and service logs
+│   ├── webhook.log           # Current webhook logs
+│   ├── webhook_archive_*.log # Archived webhook logs
+│   └── ...                   # Other log files
+├── outputs/                  # Analysis output files
+│   ├── issues/               # Issue analysis results
+│   ├── pull_requests/        # PR analysis results
+│   └── ...                   # Other event outputs
+├── prompts/                  # Jinja2 prompt templates
+│   ├── issues/               # Issue analysis prompts
+│   ├── pull_requests/        # PR analysis prompts
+│   ├── reviews/              # Review response prompts
+│   ├── workflows/            # Workflow analysis prompts
+│   ├── releases/             # Release announcement prompts
+│   ├── deployment/           # Deployment event prompts
+│   ├── generic/              # Generic event prompts
+│   └── push/                 # Push event prompts
+├── scripts/                  # Utility and maintenance scripts
+│   ├── analyze_missed_issues.py
+│   ├── auto_accept_invitations.py
+│   ├── setup_new_repository.py
+│   └── cron_*.sh             # Cron job scripts
+├── services/                 # Service configurations
+│   ├── README.md             # Service documentation
+│   ├── hooks.json            # Webhook service configuration
+│   ├── systemd/              # Systemd service files
+│   │   ├── hls-webhook.service
+│   │   ├── github-webhook.service
+│   │   └── hls-fastapi.service
+│   ├── pm2/                  # PM2 configuration
+│   │   └── ecosystem.config.js
+│   └── scripts/              # Service management scripts
+│       ├── start-webhook.sh
+│       ├── stop-webhook.sh
+│       ├── install-services.sh
+│       └── test-services.sh
+└── test/                     # Test files and payloads
+    ├── test_*.py             # Python test scripts
+    ├── test_*.json           # Test payloads
+    └── create_*.json         # Test creation templates
 ```
 
 ## Processing Flow Example
@@ -547,7 +624,7 @@ When a new issue is created on GitHub:
 
 1. **GitHub sends webhook** to `https://your-domain.com/hooks/github-webhook`
 2. **nginx receives HTTPS request** and proxies to webhook service on port 9000
-3. **webhook service validates** the request matches `hooks.json` rules
+3. **webhook service validates** the request matches `services/hooks.json` rules
 4. **webhook service executes** `webhook_dispatch.py` with:
    - JSON payload as command argument
    - GitHub headers as environment variables
@@ -555,16 +632,17 @@ When a new issue is created on GitHub:
    - Loads settings from `config/settings.yaml`
    - Validates webhook signature (HMAC-SHA256)
    - Checks repository and event configuration
-   - Initializes WebhookProcessor
-6. **WebhookProcessor routes** to appropriate handler (e.g., IssueHandler)
+   - Initializes WebhookProcessor from `hls/src/hsl_handler/`
+6. **WebhookProcessor routes** to appropriate handler (e.g., IssueHandler, PushHandler, GenericHandler)
 7. **Handler processes event**:
-   - Loads Jinja2 prompt template
-   - Sends prompt to Claude for analysis
+   - Loads Jinja2 prompt template from `prompts/` directory
+   - Sends prompt to Claude AI for analysis (with repository context)
    - Parses Claude's response for labels and actions
-8. **GitHub API updates**:
+   - Saves analysis to `outputs/` directory
+8. **GitHub API updates** (if configured):
    - Applies suggested labels
    - Posts analysis comment
-   - Marks issue as analyzed
+   - Marks issue as analyzed with `clide-analyzed` label
 9. **Response returned** to GitHub with processing status
 
 ## Customization
@@ -583,7 +661,7 @@ Author: {{ issue.user.login }}
 Provide:
 1. Priority (high/medium/low)
 2. Difficulty (easy/moderate/complex)
-3. Component (frontend/backend/database)
+3. Component (frontend/backend)
 4. Suggested labels
 ```
 
@@ -645,15 +723,14 @@ tail -f logs/hsl.log
 ## Support
 
 For issues and questions:
-1. Check the [Limitations document](LIMITATIONS.md) for known issues
-2. Review the [Architecture document](ARCHITECTURE.md) for system details
-3. Consult the [Deployment guide](DEPLOYMENT.md) for setup help
+1. Check the [Limitations document](docs/LIMITATIONS.md) for known issues
+2. Review the [Architecture document](docs/ARCHITECTURE.md) for system details
+3. Consult the [Deployment guide](docs/DEPLOYMENT.md) for setup help
 4. Open an issue in this repository
 
 ## Roadmap
 
-See [LIMITATIONS.md](LIMITATIONS.md) for planned improvements:
-- Message queue integration for better scalability
+See [LIMITATIONS.md](docs/LIMITATIONS.md) for planned improvements:
 - Webhook deduplication
 - Cost management and budgeting
 - Enhanced monitoring and alerting

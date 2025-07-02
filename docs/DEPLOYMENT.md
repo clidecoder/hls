@@ -52,7 +52,7 @@ ANTHROPIC_API_KEY=claude-code
 EOF
 
 # 6. Start services
-webhook -hooks hooks.json -port 9000 -verbose &
+webhook -hooks services/hooks.json -port 9000 -verbose &
 # Configure GitHub webhook to point to your-server:9000/hooks
 ```
 
@@ -259,7 +259,7 @@ User=hls
 Group=hls
 WorkingDirectory=/home/hls/hls
 Environment=PATH=/home/hls/hls/venv/bin
-ExecStart=/usr/local/bin/webhook -hooks hooks.json -port 9000 -verbose
+ExecStart=/usr/local/bin/webhook -hooks services/hooks.json -port 9000 -verbose
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -482,7 +482,7 @@ services:
 set -e
 
 # Start webhook service in background
-webhook -hooks hooks.json -port 9000 -verbose &
+webhook -hooks services/hooks.json -port 9000 -verbose &
 
 # Start FastAPI service
 uvicorn hls.src.hls_handler.main:app --host 0.0.0.0 --port 8000
@@ -792,11 +792,12 @@ tar -czf "$BACKUP_DIR.tar.gz" "$BACKUP_DIR"
 rm -rf "$BACKUP_DIR"
 ```
 
-### Database Backup (if using)
+### Data Backup
 
 ```bash
-# If using PostgreSQL for analytics
-pg_dump hls_analytics > /backup/hls_analytics_$(date +%Y%m%d).sql
+# Backup analysis outputs and logs
+cp -r /home/hls/hls/outputs "$BACKUP_DIR/"
+cp -r /home/hls/hls/logs "$BACKUP_DIR/"
 ```
 
 ## Troubleshooting

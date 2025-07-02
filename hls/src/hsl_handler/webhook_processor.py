@@ -86,11 +86,19 @@ class WebhookProcessor:
         try:
             # Check if we have a handler for this event type
             if event_type not in self.handlers:
-                logger.warning("No handler for event type", event_type=event_type)
-                return {
-                    "status": "ignored",
-                    "reason": f"no handler for event type '{event_type}'"
-                }
+                logger.warning("No specific handler for event type, using generic handler", event_type=event_type)
+                # Use generic handler for unknown events
+                if "generic" in self.handlers:
+                    handler = self.handlers["generic"]
+                    # Add event_type to payload for generic handler
+                    payload["event_type"] = event_type
+                else:
+                    return {
+                        "status": "ignored",
+                        "reason": f"no handler for event type '{event_type}'"
+                    }
+            else:
+                handler = self.handlers[event_type]
             
             # Get repository configuration
             repo_config = self.settings.get_repository_config(repo_name)
@@ -114,7 +122,6 @@ class WebhookProcessor:
                 }
             
             # Process with appropriate handler
-            handler = self.handlers[event_type]
             result = await handler.handle(payload, action)
             
             # Update success statistics

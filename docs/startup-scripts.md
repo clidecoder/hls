@@ -5,8 +5,8 @@ This document describes all startup scripts and service files for the HLS webhoo
 ## Overview
 
 The HLS webhook handler can be started in several ways:
-1. **Development**: Using `start-webhook.sh` with pm2 or nohup
-2. **Production**: Using systemd services via `install-services.sh`
+1. **Development**: Using `services/scripts/start-webhook.sh` with pm2 or nohup
+2. **Production**: Using systemd services via `services/scripts/install-services.sh`
 3. **Manual**: Direct webhook command execution
 
 ## Scripts
@@ -15,7 +15,7 @@ The HLS webhook handler can be started in several ways:
 
 #### start-webhook.sh
 - **Purpose**: Start the webhook service on port 9000
-- **Location**: `/home/clide/hls/start-webhook.sh`
+- **Location**: `/home/clide/hls/services/scripts/start-webhook.sh`
 - **Features**:
   - Checks if service is already running
   - Prefers pm2 if available (better process management)
@@ -24,7 +24,7 @@ The HLS webhook handler can be started in several ways:
 
 #### stop-webhook.sh
 - **Purpose**: Stop the running webhook service
-- **Location**: `/home/clide/hls/stop-webhook.sh`
+- **Location**: `/home/clide/hls/services/scripts/stop-webhook.sh`
 - **Features**:
   - Handles both pm2 and direct process termination
   - Verifies service is running before attempting stop
@@ -32,9 +32,9 @@ The HLS webhook handler can be started in several ways:
 
 ### Service Installation Scripts
 
-#### services/install-services.sh
+#### install-services.sh
 - **Purpose**: Install and configure systemd services
-- **Location**: `/home/clide/hls/services/install-services.sh`
+- **Location**: `/home/clide/hls/services/scripts/install-services.sh`
 - **Requires**: sudo privileges
 - **Actions**:
   1. Copies service files to `/etc/systemd/system/`
@@ -43,9 +43,9 @@ The HLS webhook handler can be started in several ways:
   4. Starts both github-webhook and hls-fastapi services
   5. Shows service status and log commands
 
-#### services/test-services.sh
+#### test-services.sh
 - **Purpose**: Verify services are running correctly
-- **Location**: `/home/clide/hls/services/test-services.sh`
+- **Location**: `/home/clide/hls/services/scripts/test-services.sh`
 - **Checks**:
   - Systemd service status
   - Port availability (9000 and 8000)
@@ -86,7 +86,7 @@ The HLS webhook handler can be started in several ways:
 
 ## Configuration Files
 
-### hooks.json
+### services/hooks.json
 - **Purpose**: Webhook service configuration
 - **Key Settings**:
   - Trigger rules for different GitHub events
@@ -94,7 +94,7 @@ The HLS webhook handler can be started in several ways:
   - Passes GitHub headers as environment variables
   - Stdin receives full JSON payload
 
-### ecosystem.config.js
+### services/pm2/ecosystem.config.js
 - **Purpose**: pm2 process manager configuration
 - **Alternative to**: systemd services
 - **Features**:
@@ -119,7 +119,7 @@ sudo ./services/install-services.sh
 ### 3. Manual Mode (For debugging)
 ```bash
 cd /home/clide/hls
-webhook -hooks hooks.json -port 9000 -verbose
+webhook -hooks services/hooks.json -port 9000 -verbose
 ```
 
 ### 4. Docker Mode (If using containers)
@@ -305,6 +305,7 @@ curl http://localhost:8000/health
 
 ## Cron Jobs
 
+### Automatic Issue Analysis
 To set up automatic issue analysis:
 ```bash
 # Add to crontab
@@ -312,6 +313,47 @@ crontab -e
 
 # Run every 6 hours
 0 */6 * * * /home/clide/hls/scripts/cron_analyze_issues.sh
+```
+
+### Auto-Accept Repository Invitations
+To automatically accept repository collaboration invitations:
+```bash
+# Add to crontab
+crontab -e
+
+# Run every 10 minutes (or adjust based on your needs)
+*/10 * * * * /home/clide/hls/scripts/cron_auto_accept_invitations.sh
+```
+
+#### Configuration
+Configure invitation acceptance criteria in `config/settings.yaml`:
+```yaml
+auto_accept_invitations:
+  enabled: true
+  check_interval_minutes: 10
+  log_level: "INFO"
+  criteria:
+    # Accept invitations to any repository by default
+    repository_patterns: ["*"]
+    # Optional: Only accept from specific organizations
+    # from_organizations: ["trusted-org", "my-company"]
+    # Optional: Only accept from specific users
+    # from_users: ["trusted-user", "bot-account"]
+    # Optional: Exclude certain repositories
+    # exclude_patterns: ["private-*", "test-*"]
+```
+
+#### Manual Testing
+Test the invitation processing manually:
+```bash
+# Dry run to see what would happen
+python scripts/auto_accept_invitations.py --dry-run
+
+# Process invitations for real
+python scripts/auto_accept_invitations.py
+
+# Use custom configuration
+python scripts/auto_accept_invitations.py --config path/to/settings.yaml
 ```
 
 ## Security Considerations

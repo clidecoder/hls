@@ -84,6 +84,36 @@ class CronAnalysisConfig(BaseSettings):
     log_level: str = "INFO"
 
 
+class InvitationCriteriaConfig(BaseSettings):
+    """Criteria for auto-accepting invitations."""
+    model_config = SettingsConfigDict(extra="ignore")
+    repository_patterns: List[str] = ["*"]
+    from_organizations: Optional[List[str]] = None
+    from_users: Optional[List[str]] = None
+    exclude_patterns: Optional[List[str]] = None
+
+
+class PostAcceptanceConfig(BaseSettings):
+    """Configuration for post-acceptance actions."""
+    model_config = SettingsConfigDict(extra="ignore")
+    clone_repository: bool = True
+    clone_base_dir: str = "/home/clide"
+    update_config: bool = True
+    register_webhook: bool = True
+    webhook_url: str = "https://clidecoder.com/hooks/github-webhook"
+    webhook_events: List[str] = ["issues", "pull_request", "pull_request_review"]
+
+
+class AutoAcceptInvitationsConfig(BaseSettings):
+    """Configuration for automatically accepting repository invitations."""
+    model_config = SettingsConfigDict(extra="ignore")
+    enabled: bool = True
+    check_interval_minutes: int = 10
+    log_level: str = "INFO"
+    criteria: InvitationCriteriaConfig = InvitationCriteriaConfig()
+    post_acceptance: PostAcceptanceConfig = PostAcceptanceConfig()
+
+
 class Settings(BaseSettings):
     """Main settings class."""
     model_config = SettingsConfigDict(
@@ -102,6 +132,7 @@ class Settings(BaseSettings):
     logging: LoggingConfig = LoggingConfig()
     features: FeaturesConfig = FeaturesConfig()
     cron_analysis: CronAnalysisConfig = CronAnalysisConfig()
+    auto_accept_invitations: AutoAcceptInvitationsConfig = AutoAcceptInvitationsConfig()
 
     @classmethod
     def from_yaml(cls, config_path: str) -> "Settings":

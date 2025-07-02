@@ -1,0 +1,25 @@
+Analyze this deployment event and provide insights about the deployment process.
+
+## Deployment Information
+- **Repository**: {{ repository.full_name }}
+- **Environment**: {{ deployment.environment }}
+- **Reference**: {{ deployment.ref }}
+- **SHA**: {{ deployment.sha[:7] }}
+- **Creator**: {{ deployment.creator.login }}
+- **Task**: {{ deployment.task }}
+
+## Analysis Required
+
+1. **Deployment Readiness**: Assess if this deployment appears ready for the target environment
+2. **Risk Factors**: Identify any potential risks with this deployment
+3. **Environment Considerations**: Evaluate if the deployment is appropriate for the environment
+4. **Timing Analysis**: Consider if this is an appropriate time for deployment
+5. **Rollback Strategy**: Suggest any rollback considerations if needed
+
+## Key Checks
+- Is this deploying the expected branch/tag?
+- Are there any recent issues or failed tests that should be considered?
+- Is the deployment following the standard deployment process?
+- Are there any dependencies or related services that need attention?
+
+Provide actionable insights to help ensure a successful deployment.

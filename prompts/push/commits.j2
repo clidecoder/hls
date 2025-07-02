@@ -1,0 +1,24 @@
+Analyze this Git push event and provide insights about the code changes.
+
+## Push Details
+- **Repository**: {{ repository.full_name }}
+- **Branch/Tag**: {{ ref }}
+- **Pusher**: {{ pusher.name }}
+- **Total Commits**: {{ commits|length }}
+
+## Analysis Required
+
+1. **Change Summary**: Summarize what was changed in this push
+2. **Code Quality**: Identify any potential code quality issues or improvements
+3. **Risk Assessment**: Evaluate if these changes introduce any risks
+4. **Commit Messages**: Analyze the quality and consistency of commit messages
+5. **Best Practices**: Check if the changes follow repository conventions
+
+## Focus Areas
+- Breaking changes or API modifications
+- Security-sensitive changes
+- Large refactoring or architectural changes
+- Dependencies updates
+- Configuration changes
+
+Please provide actionable feedback that can help maintain code quality and project standards.

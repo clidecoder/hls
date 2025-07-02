@@ -322,6 +322,156 @@ class GitHubClient:
         except GithubException as e:
             logger.error("Failed to setup repository labels", error=str(e))
     
+    async def get_user_repository_invitations(self) -> List[Dict[str, Any]]:
+        """Get all pending repository invitations for the authenticated user."""
+        try:
+            invitations = []
+            for invitation in self.client.get_user().get_invitations():
+                invitations.append({
+                    "id": invitation.id,
+                    "repository": {
+                        "name": invitation.repository.name,
+                        "full_name": invitation.repository.full_name,
+                        "owner": invitation.repository.owner.login
+                    },
+                    "inviter": {
+                        "login": invitation.inviter.login,
+                        "type": invitation.inviter.type
+                    },
+                    "permissions": invitation.permissions,
+                    "created_at": invitation.created_at.isoformat(),
+                    "url": invitation.html_url
+                })
+            
+            logger.info("Retrieved repository invitations", count=len(invitations))
+            return invitations
+        except GithubException as e:
+            logger.error("Failed to get repository invitations", error=str(e))
+            return []
+    
+    async def accept_repository_invitation(self, invitation_id: int) -> bool:
+        """Accept a repository invitation."""
+        try:
+            # Use the REST API directly for repository invitations
+            url = f"/user/repository_invitations/{invitation_id}"
+            headers = {"Accept": "application/vnd.github+json"}
+            
+            # Make PATCH request to accept invitation
+            response = requests.patch(
+                f"https://api.github.com{url}",
+                headers={
+                    "Authorization": f"token {self.config.token}",
+                    "Accept": "application/vnd.github+json"
+                }
+            )
+            
+            if response.status_code == 204:
+                logger.info("Accepted repository invitation", invitation_id=invitation_id)
+                self._request_count += 1
+                return True
+            else:
+                logger.error("Failed to accept repository invitation", 
+                           invitation_id=invitation_id, 
+                           status_code=response.status_code,
+                           response=response.text)
+                return False
+                
+        except Exception as e:
+            logger.error("Failed to accept repository invitation", 
+                        invitation_id=invitation_id, error=str(e))
+            return False
+    
+    async def decline_repository_invitation(self, invitation_id: int) -> bool:
+        """Decline a repository invitation."""
+        try:
+            # Use the REST API directly for repository invitations
+            url = f"/user/repository_invitations/{invitation_id}"
+            
+            # Make DELETE request to decline invitation
+            response = requests.delete(
+                f"https://api.github.com{url}",
+                headers={
+                    "Authorization": f"token {self.config.token}",
+                    "Accept": "application/vnd.github+json"
+                }
+            )
+            
+            if response.status_code == 204:
+                logger.info("Declined repository invitation", invitation_id=invitation_id)
+                self._request_count += 1
+                return True
+            else:
+                logger.error("Failed to decline repository invitation", 
+                           invitation_id=invitation_id, 
+                           status_code=response.status_code,
+                           response=response.text)
+                return False
+                
+        except Exception as e:
+            logger.error("Failed to decline repository invitation", 
+                        invitation_id=invitation_id, error=str(e))
+            return False
+    
+    async def create_repository_webhook(self, repo_name: str, webhook_url: str, 
+                                      events: List[str], secret: Optional[str] = None) -> bool:
+        """Create a webhook in a repository."""
+        try:
+            repo = self.client.get_repo(repo_name)
+            
+            # Check if webhook already exists
+            existing_webhooks = repo.get_hooks()
+            for hook in existing_webhooks:
+                if hook.config.get("url") == webhook_url:
+                    logger.info("Webhook already exists", repo=repo_name, url=webhook_url)
+                    return True
+            
+            # Create webhook configuration
+            config = {
+                "url": webhook_url,
+                "content_type": "json"
+            }
+            
+            if secret:
+                config["secret"] = secret
+            
+            # Create the webhook
+            hook = repo.create_hook(
+                name="web",
+                config=config,
+                events=events,
+                active=True
+            )
+            
+            logger.info("Created repository webhook", 
+                       repo=repo_name, webhook_id=hook.id, events=events)
+            self._request_count += 1
+            return True
+            
+        except GithubException as e:
+            logger.error("Failed to create repository webhook", 
+                        repo=repo_name, error=str(e))
+            return False
+    
+    async def get_repository_info(self, repo_name: str) -> Optional[Dict[str, Any]]:
+        """Get basic repository information."""
+        try:
+            repo = self.client.get_repo(repo_name)
+            
+            return {
+                "name": repo.name,
+                "full_name": repo.full_name,
+                "owner": repo.owner.login,
+                "private": repo.private,
+                "clone_url": repo.clone_url,
+                "ssh_url": repo.ssh_url,
+                "default_branch": repo.default_branch,
+                "description": repo.description
+            }
+            
+        except GithubException as e:
+            logger.error("Failed to get repository info", repo=repo_name, error=str(e))
+            return None
+    
     def get_stats(self) -> Dict[str, Any]:
         """Get client statistics."""
         rate_limit = self.client.get_rate_limit()

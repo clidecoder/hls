@@ -11,9 +11,9 @@ if pm2 list | grep -q "hls-webhook"; then
 fi
 
 # Otherwise kill the process
-if pgrep -f "webhook.*hooks.json" > /dev/null; then
+if pgrep -f "webhook.*services/hooks.json" > /dev/null; then
     echo "Stopping webhook service..."
-    pkill -f "webhook.*hooks.json"
+    pkill -f "webhook.*services/hooks.json"
     echo "Webhook service stopped."
 else
     echo "Webhook service is not running."
