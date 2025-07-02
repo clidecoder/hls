@@ -46,8 +46,9 @@ def verify_signature(payload_body: bytes, signature: str, secret: str) -> bool:
 
 def setup_environment():
     """Setup environment and logging"""
-    # Load settings from YAML file
-    settings = Settings.from_yaml("config/settings.yaml")
+    # Load settings from YAML file (will use container path if available)
+    from hls.src.hsl_handler.config import load_settings
+    settings = load_settings()
     
     # Setup logging
     setup_logging(settings.logging)
@@ -63,8 +64,9 @@ def setup_environment():
 async def process_webhook_directly(payload: dict, event_type: str, delivery_id: str, request_id: str) -> dict:
     """Process webhook using existing modules directly"""
     try:
-        # Load settings from YAML
-        settings = Settings.from_yaml("config/settings.yaml")
+        # Load settings from YAML (will use container path if available)
+        from hls.src.hsl_handler.config import load_settings
+        settings = load_settings()
         
         # Initialize processor with settings
         processor = WebhookProcessor(settings)

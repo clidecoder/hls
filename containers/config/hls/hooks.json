@@ -1,0 +1,30 @@
+[
+  {
+    "id": "github-webhook",
+    "execute-command": "/app/webhook_dispatch.py",
+    "command-working-directory": "/app",
+    "response-message": "Webhook received",
+    "pass-arguments-to-command": [
+      {
+        "source": "entire-payload"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "source": "header",
+        "name": "X-GitHub-Event",
+        "envname": "GITHUB_EVENT"
+      },
+      {
+        "source": "header",
+        "name": "X-GitHub-Delivery", 
+        "envname": "GITHUB_DELIVERY"
+      },
+      {
+        "source": "header",
+        "name": "X-Hub-Signature-256",
+        "envname": "GITHUB_SIGNATURE"
+      }
+    ]
+  }
+]
